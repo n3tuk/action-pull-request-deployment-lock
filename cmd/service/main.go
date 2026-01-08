@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -61,7 +62,7 @@ func init() {
 	rootCmd.Flags().String("tls-key", "", "Path to TLS key")
 	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().String("log-format", "json", "Log format (json, console)")
-	rootCmd.Flags().Duration("shutdown-timeout", 0, "Graceful shutdown timeout (e.g., 30s)")
+	rootCmd.Flags().Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout (e.g., 30s)")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("api.port", rootCmd.Flags().Lookup("api-port"))

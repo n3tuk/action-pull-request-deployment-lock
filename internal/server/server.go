@@ -108,11 +108,15 @@ func (s *Server) initMetrics() {
 		s.requestsInFlt,
 	} {
 		if err := prometheus.Register(collector); err != nil {
-			// Check if it's already registered error, if not, it's a real issue
-			if !errors.As(err, &prometheus.AlreadyRegisteredError{}) {
-				// This is an unexpected error, but we don't want to panic
-				// Log it if we had access to logger here
+			// If it's an AlreadyRegisteredError, this is expected in tests; skip it.
+			var alreadyRegisteredErr *prometheus.AlreadyRegisteredError
+			if errors.As(err, &alreadyRegisteredErr) {
 				continue
+			}
+
+			// This is an unexpected error; log it but do not panic.
+			if s.logger != nil {
+				s.logger.Error("failed to register Prometheus collector", zap.Error(err))
 			}
 		}
 	}
