@@ -35,25 +35,6 @@ go.work.sum
 *~
 .DS_Store
 
-# Terraform files
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-crash.log
-crash.*.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-.terraformrc
-terraform.rc
-
-# Terraform variable files that might contain secrets
-*.tfvars
-*.tfvars.json
-!example.tfvars
-
 # Helm charts
 charts/**/charts/
 charts/**/*.tgz
