@@ -135,7 +135,7 @@ func (s *Server) setupServers() error {
 
 	if s.cfg.TLSEnabled {
 		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
+			MinVersion: tls.VersionTLS13,
 		}
 		s.apiServer.TLSConfig = tlsConfig
 	}
