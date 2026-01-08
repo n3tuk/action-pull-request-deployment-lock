@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -97,12 +98,24 @@ func (s *Server) initMetrics() {
 		},
 	)
 
-	// Try to register metrics, ignore if already registered (for tests)
-	_ = prometheus.Register(s.appInfo)
-	_ = prometheus.Register(s.appUptime)
-	_ = prometheus.Register(s.httpRequests)
-	_ = prometheus.Register(s.httpDuration)
-	_ = prometheus.Register(s.requestsInFlt)
+	// Register metrics, checking if already registered (for tests)
+	// In tests, multiple server instances may be created
+	for _, collector := range []prometheus.Collector{
+		s.appInfo,
+		s.appUptime,
+		s.httpRequests,
+		s.httpDuration,
+		s.requestsInFlt,
+	} {
+		if err := prometheus.Register(collector); err != nil {
+			// Check if it's already registered error, if not, it's a real issue
+			if !errors.As(err, &prometheus.AlreadyRegisteredError{}) {
+				// This is an unexpected error, but we don't want to panic
+				// Log it if we had access to logger here
+				continue
+			}
+		}
+	}
 
 	// Set app info
 	s.appInfo.WithLabelValues("dev").Set(1)

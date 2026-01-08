@@ -269,13 +269,17 @@ func TestMetricsEndpoint(t *testing.T) {
 	}
 
 	// Make a request to the API server to generate some metrics
-	_, _ = http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", cfg.APIPort))
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", cfg.APIPort))
+	if err != nil {
+		t.Fatalf("GET /ping error = %v", err)
+	}
+	resp.Body.Close()
 
 	// Wait a bit for metrics to be recorded
 	time.Sleep(100 * time.Millisecond)
 
 	// Test /metrics endpoint
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/metrics", cfg.MetricsPort))
+	resp, err = http.Get(fmt.Sprintf("http://127.0.0.1:%d/metrics", cfg.MetricsPort))
 	if err != nil {
 		t.Fatalf("GET /metrics error = %v", err)
 	}
