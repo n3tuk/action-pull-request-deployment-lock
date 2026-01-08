@@ -12,25 +12,25 @@ type Metrics struct {
 	namespace string
 
 	// Application metrics
-	AppInfo               *prometheus.GaugeVec
-	AppUptimeSeconds      prometheus.Counter
-	AppStartTimeSeconds   prometheus.Gauge
-	AppGoGoroutines       prometheus.Gauge
-	AppGoThreads          prometheus.Gauge
+	AppInfo                *prometheus.GaugeVec
+	AppUptimeSeconds       prometheus.Counter
+	AppStartTimeSeconds    prometheus.Gauge
+	AppGoGoroutines        prometheus.Gauge
+	AppGoThreads           prometheus.Gauge
 	AppGoGCDurationSeconds prometheus.Summary
 
 	// HTTP metrics
-	HTTPRequestsTotal        *prometheus.CounterVec
+	HTTPRequestsTotal          *prometheus.CounterVec
 	HTTPRequestDurationSeconds *prometheus.HistogramVec
-	HTTPRequestSizeBytes     *prometheus.HistogramVec
-	HTTPResponseSizeBytes    *prometheus.HistogramVec
-	HTTPRequestsInFlight     *prometheus.GaugeVec
+	HTTPRequestSizeBytes       *prometheus.HistogramVec
+	HTTPResponseSizeBytes      *prometheus.HistogramVec
+	HTTPRequestsInFlight       *prometheus.GaugeVec
 
 	// Health check metrics
-	HealthCheckStatus              *prometheus.GaugeVec
-	HealthCheckDurationSeconds     *prometheus.HistogramVec
+	HealthCheckStatus               *prometheus.GaugeVec
+	HealthCheckDurationSeconds      *prometheus.HistogramVec
 	HealthCheckLastSuccessTimestamp *prometheus.GaugeVec
-	HealthCheckFailuresTotal       *prometheus.CounterVec
+	HealthCheckFailuresTotal        *prometheus.CounterVec
 
 	registry *prometheus.Registry
 }
@@ -232,7 +232,7 @@ func (m *Metrics) UpdateRuntimeMetrics() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	m.AppGoThreads.Set(float64(memStats.NumGC))
-	
+
 	// Get recent GC pause time
 	if memStats.NumGC > 0 {
 		// Use the most recent GC pause

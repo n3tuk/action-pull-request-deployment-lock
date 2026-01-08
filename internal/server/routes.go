@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
-	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
+	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
 )
 
 // setupAPIRoutes configures the API server routes.
@@ -22,10 +22,10 @@ func setupProbeRoutes(r *chi.Mux, logger *zap.Logger, healthManager *health.Mana
 	// Wrap each endpoint with health check metrics middleware
 	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "startup")).
 		Get("/healthz/startup", handleStartupProbe(logger, healthManager))
-	
+
 	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "liveness")).
 		Get("/healthz/live", handleLivenessProbe(logger, healthManager))
-	
+
 	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "readiness")).
 		Get("/healthz/ready", handleReadinessProbe(logger, healthManager))
 }

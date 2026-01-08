@@ -79,7 +79,7 @@ func TestMetricsMiddlewareWithRoutePattern(t *testing.T) {
 	// Chi should provide the pattern, but in case it doesn't, check for either
 	patternCount := testutil.ToFloat64(m.HTTPRequestsTotal.WithLabelValues("GET", "/api/{id}", "200"))
 	pathCount := testutil.ToFloat64(m.HTTPRequestsTotal.WithLabelValues("GET", "/api/123", "200"))
-	
+
 	if patternCount != 1 && pathCount != 1 {
 		t.Errorf("Request count for pattern or path = %f or %f, want 1", patternCount, pathCount)
 	}

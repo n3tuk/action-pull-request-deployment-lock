@@ -29,7 +29,7 @@ func (c *ConfigChecker) Name() string {
 // Check performs the health check.
 func (c *ConfigChecker) Check(ctx context.Context) CheckResult {
 	start := time.Now()
-	
+
 	result := CheckResult{
 		Name:      c.Name(),
 		Status:    StatusOK,
@@ -66,7 +66,7 @@ func (l *LoggerChecker) Name() string {
 // Check performs the health check.
 func (l *LoggerChecker) Check(ctx context.Context) CheckResult {
 	start := time.Now()
-	
+
 	result := CheckResult{
 		Name:      l.Name(),
 		Status:    StatusOK,
@@ -85,14 +85,14 @@ func (l *LoggerChecker) Check(ctx context.Context) CheckResult {
 
 // ServerChecker checks if the servers are running.
 type ServerChecker struct {
-	logger        *zap.Logger
+	logger         *zap.Logger
 	serversRunning bool
 }
 
 // NewServerChecker creates a new server health checker.
 func NewServerChecker(logger *zap.Logger) *ServerChecker {
 	return &ServerChecker{
-		logger:        logger,
+		logger:         logger,
 		serversRunning: false,
 	}
 }
@@ -110,7 +110,7 @@ func (s *ServerChecker) SetRunning(running bool) {
 // Check performs the health check.
 func (s *ServerChecker) Check(ctx context.Context) CheckResult {
 	start := time.Now()
-	
+
 	result := CheckResult{
 		Name:      s.Name(),
 		Status:    StatusOK,
@@ -161,7 +161,7 @@ func (r *ReadinessChecker) SetShuttingDown(shutDown bool) {
 // Check performs the health check.
 func (r *ReadinessChecker) Check(ctx context.Context) CheckResult {
 	start := time.Now()
-	
+
 	result := CheckResult{
 		Name:      r.Name(),
 		Status:    StatusOK,

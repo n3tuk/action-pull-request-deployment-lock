@@ -35,7 +35,7 @@ type Config struct {
 	ShutdownTimeout time.Duration
 
 	// Health check settings
-	HealthCheckTimeout      time.Duration
+	HealthCheckTimeout       time.Duration
 	HealthCheckCacheDuration time.Duration
 
 	// Metrics settings
@@ -78,17 +78,17 @@ func Load() (*Config, error) {
 
 	// Parse configuration
 	cfg := &Config{
-		APIPort:         viper.GetInt("api.port"),
-		APIHost:         viper.GetString("api.host"),
-		ProbePort:       viper.GetInt("probe.port"),
-		ProbeHost:       viper.GetString("probe.host"),
-		MetricsPort:     viper.GetInt("metrics.port"),
-		MetricsHost:     viper.GetString("metrics.host"),
-		TLSEnabled:      viper.GetBool("tls.enabled"),
-		TLSCert:         viper.GetString("tls.cert"),
-		TLSKey:          viper.GetString("tls.key"),
-		LogLevel:        viper.GetString("log.level"),
-		LogFormat:       viper.GetString("log.format"),
+		APIPort:          viper.GetInt("api.port"),
+		APIHost:          viper.GetString("api.host"),
+		ProbePort:        viper.GetInt("probe.port"),
+		ProbeHost:        viper.GetString("probe.host"),
+		MetricsPort:      viper.GetInt("metrics.port"),
+		MetricsHost:      viper.GetString("metrics.host"),
+		TLSEnabled:       viper.GetBool("tls.enabled"),
+		TLSCert:          viper.GetString("tls.cert"),
+		TLSKey:           viper.GetString("tls.key"),
+		LogLevel:         viper.GetString("log.level"),
+		LogFormat:        viper.GetString("log.format"),
 		MetricsNamespace: viper.GetString("metrics.namespace"),
 	}
 

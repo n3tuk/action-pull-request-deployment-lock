@@ -16,22 +16,22 @@ import (
 
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/config"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
-	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
+	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
 )
 
 // Server manages the three HTTP servers (API, Probe, Metrics).
 type Server struct {
-	cfg            *config.Config
-	logger         *zap.Logger
-	apiServer      *http.Server
-	probeServer    *http.Server
-	metricsServer  *http.Server
-	startTime      time.Time
-	shutdownChan   chan struct{}
-	metrics        *metrics.Metrics
-	healthManager  *health.Manager
-	runtimeTicker  *time.Ticker
+	cfg           *config.Config
+	logger        *zap.Logger
+	apiServer     *http.Server
+	probeServer   *http.Server
+	metricsServer *http.Server
+	startTime     time.Time
+	shutdownChan  chan struct{}
+	metrics       *metrics.Metrics
+	healthManager *health.Manager
+	runtimeTicker *time.Ticker
 }
 
 // New creates a new Server instance.
@@ -198,10 +198,10 @@ func (s *Server) Start() error {
 	default:
 		// Mark servers as running in health manager
 		s.healthManager.SetServersRunning(true)
-		
+
 		// Start uptime counter goroutine
 		go s.updateMetrics()
-		
+
 		return nil
 	}
 }
@@ -228,7 +228,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Mark as shutting down in health manager
 	s.healthManager.SetShuttingDown(true)
-	
+
 	// Signal the uptime goroutine to stop
 	close(s.shutdownChan)
 
