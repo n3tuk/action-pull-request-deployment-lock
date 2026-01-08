@@ -22,7 +22,7 @@ The project consists of four primary components:
 
 ### Frameworks and Libraries
 - **Chi**: HTTP router and middleware framework
-- **Olric**: Distributed in-memory key-value store for lock management
+- **Olric**: Distributed in-memory key-value store for lock management (run embedded within the service)
 - **Prometheus client_golang**: Metrics collection and exposition
 - **Cobra**: CLI framework for the client application
 - **Viper**: Configuration management
@@ -176,7 +176,7 @@ runs:
 
 #### Implementation Requirements
 - Use composite action with shell steps
-- Handle GITHUB_TOKEN or GitHub App credentials
+- Handle GITHUB_TOKEN for accessing ghcr.io registry
 - Provide clear error messages
 - Set outputs for downstream steps
 - Support all three operations (lock/unlock/status)
@@ -216,7 +216,7 @@ The Helm chart must include:
 - Support for both Ingress and Gateway API
 - TLS configuration
 - Path-based routing
-- Annotations for ingress controllers
+- Annotations for ingress controllers and gateway controllers
 
 #### ServiceMonitor (Prometheus Operator)
 - Scrape configuration for metrics endpoint
@@ -256,6 +256,7 @@ The Helm chart must include:
 - **Unit Tests**: Run with race detector
 - **Integration Tests**: Test service and client together
 - **Code Coverage**: Generate and upload to CodeCov
+- **Static Analysis**: Run Trivy and CodeQL static analysis
 - **Artifact Upload**: Build binaries and save as artifacts
 
 #### Linting (`lint.yaml`)
@@ -273,6 +274,7 @@ The Helm chart must include:
 - **Multi-platform**: Build for Linux, macOS, Windows
 - **Docker Images**: Build and push container images
 - **Helm Chart**: Package and publish chart
+- **SBOM Generation**: Software Bill of Materials
 - **GitHub Release**: Create release with changelog
 - **Trigger**: Run on version tags (v*)
 
@@ -280,7 +282,6 @@ The Helm chart must include:
 - **Trivy/Clair**: Container image vulnerability scanning
 - **CodeQL**: Static analysis security testing (SAST)
 - **Dependency Scanning**: Check for vulnerable dependencies
-- **SBOM Generation**: Software Bill of Materials
 
 #### Other Workflows
 - **Release Drafter**: Automatically draft releases from PRs
@@ -531,7 +532,7 @@ Follow conventional commits format:
 - Test lock management operations
 - Test metrics collection
 - Test configuration loading
-- Mock external dependencies (Olric, OIDC)
+- Mock external dependencies (OIDC only; Olric is embedded)
 
 #### Client
 - Test all CLI commands
