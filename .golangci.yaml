@@ -1,0 +1,41 @@
+---
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable-all: true
+  disable:
+    # Disabled as per project requirements
+    - depguard
+    - exhaustruct
+    - gochecknoglobals
+    - gochecknoinits
+    - gocyclo
+    - loggercheck
+    - nlreturn
+    - perfsprint
+    - prealloc
+    - varnamelen
+    - wrapcheck
+    # Deprecated linters
+    - execinquery
+    - gomnd
+
+linters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/n3tuk/action-pull-request-deployment-lock
+  govet:
+    enable-all: true
+  revive:
+    confidence: 0.8
+  staticcheck:
+    checks: ["all"]
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
