@@ -1,4 +1,6 @@
 ---
+version: 2
+
 run:
   timeout: 5m
   tests: true
@@ -19,9 +21,6 @@ linters:
     - prealloc
     - varnamelen
     - wrapcheck
-    # Deprecated linters
-    - execinquery
-    - gomnd
 
 linters-settings:
   gofmt:
