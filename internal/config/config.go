@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -50,9 +51,11 @@ func Load() (*Config, error) {
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("shutdown.timeout", "30s")
 
-	// Enable environment variable support
+	// Enable environment variable support with automatic replacement
 	viper.SetEnvPrefix("LOCK")
 	viper.AutomaticEnv()
+	// Replace . with _ in environment variable names (e.g., api.port -> LOCK_API_PORT)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// Try to read config file if it exists
 	viper.SetConfigName("config")

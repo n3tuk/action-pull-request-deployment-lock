@@ -95,11 +95,12 @@ func (s *Server) initMetrics() {
 		},
 	)
 
-	prometheus.MustRegister(s.appInfo)
-	prometheus.MustRegister(s.appUptime)
-	prometheus.MustRegister(s.httpRequests)
-	prometheus.MustRegister(s.httpDuration)
-	prometheus.MustRegister(s.requestsInFlt)
+	// Try to register metrics, ignore if already registered (for tests)
+	_ = prometheus.Register(s.appInfo)
+	_ = prometheus.Register(s.appUptime)
+	_ = prometheus.Register(s.httpRequests)
+	_ = prometheus.Register(s.httpDuration)
+	_ = prometheus.Register(s.requestsInFlt)
 
 	// Set app info
 	s.appInfo.WithLabelValues("dev").Set(1)
