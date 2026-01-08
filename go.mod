@@ -3,7 +3,7 @@ module github.com/n3tuk/action-pull-request-deployment-lock
 go 1.23
 
 require (
-	github.com/go-chi/chi/v5 v5.1.0
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/prometheus/client_golang v1.20.5
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
