@@ -1,7 +1,133 @@
 package main
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
+
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/config"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/logger"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/server"
+)
+
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 func main() {
-	fmt.Println("Service application")
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+var rootCmd = &cobra.Command{
+	Use:   "service",
+	Short: "Deployment lock service",
+	Long:  `A distributed locking service for managing deployment locks.`,
+	RunE:  runServer,
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("Version: %s\n", version)
+		fmt.Printf("Commit:  %s\n", commit)
+		fmt.Printf("Built:   %s\n", date)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
+
+	// Configuration flags
+	rootCmd.Flags().Int("api-port", 8080, "API server port")
+	rootCmd.Flags().String("api-host", "0.0.0.0", "API server host")
+	rootCmd.Flags().Int("probe-port", 8081, "Probe server port")
+	rootCmd.Flags().String("probe-host", "0.0.0.0", "Probe server host")
+	rootCmd.Flags().Int("metrics-port", 9090, "Metrics server port")
+	rootCmd.Flags().String("metrics-host", "0.0.0.0", "Metrics server host")
+	rootCmd.Flags().Bool("tls-enabled", false, "Enable TLS for API server")
+	rootCmd.Flags().String("tls-cert", "", "Path to TLS certificate")
+	rootCmd.Flags().String("tls-key", "", "Path to TLS key")
+	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
+	rootCmd.Flags().String("log-format", "json", "Log format (json, console)")
+	rootCmd.Flags().Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout (e.g., 30s)")
+
+	// Bind flags to viper
+	_ = viper.BindPFlag("api.port", rootCmd.Flags().Lookup("api-port"))
+	_ = viper.BindPFlag("api.host", rootCmd.Flags().Lookup("api-host"))
+	_ = viper.BindPFlag("probe.port", rootCmd.Flags().Lookup("probe-port"))
+	_ = viper.BindPFlag("probe.host", rootCmd.Flags().Lookup("probe-host"))
+	_ = viper.BindPFlag("metrics.port", rootCmd.Flags().Lookup("metrics-port"))
+	_ = viper.BindPFlag("metrics.host", rootCmd.Flags().Lookup("metrics-host"))
+	_ = viper.BindPFlag("tls.enabled", rootCmd.Flags().Lookup("tls-enabled"))
+	_ = viper.BindPFlag("tls.cert", rootCmd.Flags().Lookup("tls-cert"))
+	_ = viper.BindPFlag("tls.key", rootCmd.Flags().Lookup("tls-key"))
+	_ = viper.BindPFlag("log.level", rootCmd.Flags().Lookup("log-level"))
+	_ = viper.BindPFlag("log.format", rootCmd.Flags().Lookup("log-format"))
+	_ = viper.BindPFlag("shutdown.timeout", rootCmd.Flags().Lookup("shutdown-timeout"))
+}
+
+func runServer(cmd *cobra.Command, args []string) error {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Initialize logger
+	log, err := logger.New(cfg.LogLevel, cfg.LogFormat)
+	if err != nil {
+		return fmt.Errorf("failed to initialize logger: %w", err)
+	}
+	defer log.Sync()
+
+	log.Info("Starting deployment lock service",
+		zap.String("version", version),
+		zap.String("commit", commit),
+		zap.String("date", date),
+	)
+
+	// Create server
+	srv, err := server.New(cfg, log)
+	if err != nil {
+		return fmt.Errorf("failed to create server: %w", err)
+	}
+
+	// Start server
+	if err := srv.Start(); err != nil {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+
+	log.Info("Service started successfully")
+
+	// Wait for interrupt signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	<-sigChan
+
+	log.Info("Shutdown signal received")
+
+	// Graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Error("Error during shutdown", zap.Error(err))
+		return err
+	}
+
+	log.Info("Service stopped gracefully")
+	return nil
 }
