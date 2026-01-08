@@ -110,11 +110,6 @@ func getRoutePattern(r *http.Request) string {
 		return rctx.RoutePattern()
 	}
 
-	// Try to get from middleware
-	if pattern := middleware.GetReqID(r.Context()); pattern != "" {
-		// This won't work, but it's a fallback attempt
-	}
-
 	// Fall back to the path
 	path := r.URL.Path
 	if path == "" {

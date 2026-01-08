@@ -17,7 +17,7 @@ func TestMetricsMiddleware(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 
@@ -56,7 +56,7 @@ func TestMetricsMiddlewareWithRoutePattern(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 
@@ -90,7 +90,7 @@ func TestMetricsMiddlewareStatusCodes(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 
@@ -131,7 +131,7 @@ func TestMetricsMiddlewareResponseSize(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 
@@ -182,7 +182,7 @@ func TestHealthCheckMetricsMiddleware(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 
@@ -209,7 +209,7 @@ func TestHealthCheckMetricsMiddlewareFailure(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 	m := metrics.NewMetrics("test", buildInfo)
 

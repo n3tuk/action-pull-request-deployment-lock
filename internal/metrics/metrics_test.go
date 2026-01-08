@@ -10,7 +10,7 @@ func TestNewMetrics(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -38,7 +38,7 @@ func TestMetricsRegistry(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -81,7 +81,7 @@ func TestHTTPMetrics(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -109,7 +109,7 @@ func TestHealthCheckMetrics(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -136,7 +136,7 @@ func TestUpdateRuntimeMetrics(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -162,7 +162,7 @@ func TestAppUptimeMetric(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -186,7 +186,7 @@ func TestMetricsLabels(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
@@ -211,7 +211,7 @@ func TestMetricsCollectorRegistration(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	// Create first metrics instance
@@ -236,7 +236,7 @@ func TestHistogramBuckets(t *testing.T) {
 	buildInfo := map[string]string{
 		"version": "1.0.0",
 		"commit":  "abc123",
-		"date":    "2026-01-08",
+		"date":    "2024-01-08",
 	}
 
 	m := NewMetrics("test", buildInfo)
