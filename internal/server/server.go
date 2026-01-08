@@ -26,6 +26,7 @@ type Server struct {
 	probeServer   *http.Server
 	metricsServer *http.Server
 	startTime     time.Time
+	shutdownChan  chan struct{}
 
 	// Prometheus metrics
 	appInfo       *prometheus.GaugeVec
@@ -38,9 +39,10 @@ type Server struct {
 // New creates a new Server instance.
 func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	s := &Server{
-		cfg:       cfg,
-		logger:    logger,
-		startTime: time.Now(),
+		cfg:          cfg,
+		logger:       logger,
+		startTime:    time.Now(),
+		shutdownChan: make(chan struct{}),
 	}
 
 	// Initialize metrics
@@ -287,14 +289,22 @@ func (s *Server) updateUptime() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		s.appUptime.Add(1)
+	for {
+		select {
+		case <-ticker.C:
+			s.appUptime.Add(1)
+		case <-s.shutdownChan:
+			return
+		}
 	}
 }
 
 // Shutdown gracefully shuts down all servers.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Info("Shutting down servers gracefully")
+
+	// Signal the uptime goroutine to stop
+	close(s.shutdownChan)
 
 	var wg sync.WaitGroup
 	errChan := make(chan error, 3)
