@@ -130,39 +130,39 @@ func TestLoggerOutput(t *testing.T) {
 
 func TestLoggerLevelEnabled(t *testing.T) {
 	tests := []struct {
-		name          string
-		configLevel   string
-		testLevel     zapcore.Level
+		name            string
+		configLevel     string
+		testLevel       zapcore.Level
 		shouldBeEnabled bool
 	}{
 		{
-			name:          "debug level should enable debug",
-			configLevel:   "debug",
-			testLevel:     zapcore.DebugLevel,
+			name:            "debug level should enable debug",
+			configLevel:     "debug",
+			testLevel:       zapcore.DebugLevel,
 			shouldBeEnabled: true,
 		},
 		{
-			name:          "info level should not enable debug",
-			configLevel:   "info",
-			testLevel:     zapcore.DebugLevel,
+			name:            "info level should not enable debug",
+			configLevel:     "info",
+			testLevel:       zapcore.DebugLevel,
 			shouldBeEnabled: false,
 		},
 		{
-			name:          "info level should enable info",
-			configLevel:   "info",
-			testLevel:     zapcore.InfoLevel,
+			name:            "info level should enable info",
+			configLevel:     "info",
+			testLevel:       zapcore.InfoLevel,
 			shouldBeEnabled: true,
 		},
 		{
-			name:          "warn level should not enable info",
-			configLevel:   "warn",
-			testLevel:     zapcore.InfoLevel,
+			name:            "warn level should not enable info",
+			configLevel:     "warn",
+			testLevel:       zapcore.InfoLevel,
 			shouldBeEnabled: false,
 		},
 		{
-			name:          "error level should enable error",
-			configLevel:   "error",
-			testLevel:     zapcore.ErrorLevel,
+			name:            "error level should enable error",
+			configLevel:     "error",
+			testLevel:       zapcore.ErrorLevel,
 			shouldBeEnabled: true,
 		},
 	}

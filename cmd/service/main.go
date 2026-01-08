@@ -130,4 +130,3 @@ func runServer(cmd *cobra.Command, args []string) error {
 	log.Info("Service stopped gracefully")
 	return nil
 }
-

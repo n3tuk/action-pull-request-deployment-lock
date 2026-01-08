@@ -287,14 +287,14 @@ func TestLoadWithEnvironmentVariables(t *testing.T) {
 	// Save current environment and restore at the end
 	oldEnv := make(map[string]string)
 	envVars := map[string]string{
-		"LOCK_API_PORT":        "9000",
-		"LOCK_PROBE_PORT":      "9001",
-		"LOCK_METRICS_PORT":    "9002",
-		"LOCK_LOG_LEVEL":       "debug",
-		"LOCK_LOG_FORMAT":      "console",
-		"LOCK_TLS_ENABLED":     "true",
-		"LOCK_TLS_CERT":        "/test/cert.pem",
-		"LOCK_TLS_KEY":         "/test/key.pem",
+		"LOCK_API_PORT":         "9000",
+		"LOCK_PROBE_PORT":       "9001",
+		"LOCK_METRICS_PORT":     "9002",
+		"LOCK_LOG_LEVEL":        "debug",
+		"LOCK_LOG_FORMAT":       "console",
+		"LOCK_TLS_ENABLED":      "true",
+		"LOCK_TLS_CERT":         "/test/cert.pem",
+		"LOCK_TLS_KEY":          "/test/key.pem",
 		"LOCK_SHUTDOWN_TIMEOUT": "45s",
 	}
 
@@ -323,7 +323,7 @@ func TestLoadWithEnvironmentVariables(t *testing.T) {
 
 	// Reset viper to pick up environment variables
 	viper.Reset()
-	
+
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)

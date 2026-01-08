@@ -37,7 +37,7 @@ func TestNew(t *testing.T) {
 	}
 
 	if srv == nil {
-		t.Error("New() returned nil server")
+		t.Fatal("New() returned nil server")
 	}
 
 	if srv.apiServer == nil {
