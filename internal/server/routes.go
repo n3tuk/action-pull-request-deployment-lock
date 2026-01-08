@@ -6,6 +6,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
+	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
 )
 
 // setupAPIRoutes configures the API server routes.
@@ -13,11 +17,17 @@ func setupAPIRoutes(r *chi.Mux, logger *zap.Logger) {
 	r.Get("/ping", handlePing(logger))
 }
 
-// setupProbeRoutes configures the probe server routes.
-func setupProbeRoutes(r *chi.Mux, logger *zap.Logger) {
-	r.Get("/healthz/startup", handleHealthz(logger, "startup"))
-	r.Get("/healthz/live", handleHealthz(logger, "live"))
-	r.Get("/healthz/ready", handleHealthz(logger, "ready"))
+// setupProbeRoutes configures the probe server routes with health checks.
+func setupProbeRoutes(r *chi.Mux, logger *zap.Logger, healthManager *health.Manager, m *metrics.Metrics) {
+	// Wrap each endpoint with health check metrics middleware
+	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "startup")).
+		Get("/healthz/startup", handleStartupProbe(logger, healthManager))
+	
+	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "liveness")).
+		Get("/healthz/live", handleLivenessProbe(logger, healthManager))
+	
+	r.With(internalMiddleware.HealthCheckMetricsMiddleware(m, "readiness")).
+		Get("/healthz/ready", handleReadinessProbe(logger, healthManager))
 }
 
 // handlePing handles the /ping endpoint.
@@ -36,17 +46,56 @@ func handlePing(logger *zap.Logger) http.HandlerFunc {
 	}
 }
 
-// handleHealthz handles the health check endpoints.
-func handleHealthz(logger *zap.Logger, checkType string) http.HandlerFunc {
+// handleStartupProbe handles the startup probe endpoint.
+func handleStartupProbe(logger *zap.Logger, healthManager *health.Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// For now, all health checks pass
-		// In the future, we can add actual health checks here
-		w.Header().Set("Content-Type", "text/plain")
+		response := healthManager.GetStartupStatus(r.Context())
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Set status code based on health status
+		if response.Status == health.StatusOK {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logger.Error("Failed to encode startup probe response", zap.Error(err))
+		}
+	}
+}
+
+// handleLivenessProbe handles the liveness probe endpoint.
+func handleLivenessProbe(logger *zap.Logger, healthManager *health.Manager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		response := healthManager.GetLivenessStatus()
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte("ok\n")); err != nil {
-			logger.Error("Failed to write health check response",
-				zap.String("type", checkType),
-				zap.Error(err))
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logger.Error("Failed to encode liveness probe response", zap.Error(err))
+		}
+	}
+}
+
+// handleReadinessProbe handles the readiness probe endpoint.
+func handleReadinessProbe(logger *zap.Logger, healthManager *health.Manager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		response := healthManager.GetReadinessStatus(r.Context())
+
+		w.Header().Set("Content-Type", "application/json")
+
+		// Set status code based on ready state
+		if response.Ready {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			logger.Error("Failed to encode readiness probe response", zap.Error(err))
 		}
 	}
 }

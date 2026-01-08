@@ -14,17 +14,29 @@ import (
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/logger"
 )
 
+// testBuildInfo returns a standard build info for tests.
+func testBuildInfo() map[string]string {
+	return map[string]string{
+		"version": "test",
+		"commit":  "test",
+		"date":    "test",
+	}
+}
+
 func TestNew(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18080,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18081,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19090,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "info",
-		LogFormat:       "json",
-		ShutdownTimeout: 30 * time.Second,
+		APIPort:                  18080,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18081,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19090,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "info",
+		LogFormat:                "json",
+		ShutdownTimeout:          30 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("info", "json")
@@ -32,7 +44,13 @@ func TestNew(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	buildInfo := map[string]string{
+		"version": "test",
+		"commit":  "test",
+		"date":    "test",
+	}
+
+	srv, err := New(cfg, log, buildInfo)
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -56,15 +74,18 @@ func TestNew(t *testing.T) {
 
 func TestServerStartAndShutdown(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18082,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18083,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19091,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "error",
-		LogFormat:       "json",
-		ShutdownTimeout: 5 * time.Second,
+		APIPort:                  18082,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18083,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19091,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "error",
+		LogFormat:                "json",
+		ShutdownTimeout:          5 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("error", "json")
@@ -72,7 +93,7 @@ func TestServerStartAndShutdown(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	srv, err := New(cfg, log, testBuildInfo())
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -98,15 +119,18 @@ func TestServerStartAndShutdown(t *testing.T) {
 
 func TestAPIPingEndpoint(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18084,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18085,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19092,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "error",
-		LogFormat:       "json",
-		ShutdownTimeout: 5 * time.Second,
+		APIPort:                  18084,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18085,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19092,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "error",
+		LogFormat:                "json",
+		ShutdownTimeout:          5 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("error", "json")
@@ -114,7 +138,7 @@ func TestAPIPingEndpoint(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	srv, err := New(cfg, log, testBuildInfo())
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -165,15 +189,18 @@ func TestAPIPingEndpoint(t *testing.T) {
 
 func TestProbeEndpoints(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18086,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18087,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19093,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "error",
-		LogFormat:       "json",
-		ShutdownTimeout: 5 * time.Second,
+		APIPort:                  18086,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18087,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19093,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "error",
+		LogFormat:                "json",
+		ShutdownTimeout:          5 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("error", "json")
@@ -181,7 +208,7 @@ func TestProbeEndpoints(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	srv, err := New(cfg, log, testBuildInfo())
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -220,13 +247,31 @@ func TestProbeEndpoints(t *testing.T) {
 				t.Errorf("Status code = %d, want %d", resp.StatusCode, http.StatusOK)
 			}
 
+			// Check Content-Type is JSON
+			contentType := resp.Header.Get("Content-Type")
+			if contentType != "application/json" {
+				t.Errorf("Content-Type = %s, want application/json", contentType)
+			}
+
+			// Verify JSON response
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				t.Fatalf("Failed to read response body: %v", err)
 			}
 
-			if string(body) != "ok\n" {
-				t.Errorf("Response body = %s, want ok\\n", string(body))
+			var response map[string]interface{}
+			if err := json.Unmarshal(body, &response); err != nil {
+				t.Fatalf("Failed to unmarshal response: %v", err)
+			}
+
+			// Check for status field
+			if _, ok := response["status"]; !ok {
+				t.Error("Response missing 'status' field")
+			}
+
+			// Check for timestamp field
+			if _, ok := response["timestamp"]; !ok {
+				t.Error("Response missing 'timestamp' field")
 			}
 		})
 	}
@@ -234,15 +279,18 @@ func TestProbeEndpoints(t *testing.T) {
 
 func TestMetricsEndpoint(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18088,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18089,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19094,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "error",
-		LogFormat:       "json",
-		ShutdownTimeout: 5 * time.Second,
+		APIPort:                  18088,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18089,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19094,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "error",
+		LogFormat:                "json",
+		ShutdownTimeout:          5 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("error", "json")
@@ -250,7 +298,7 @@ func TestMetricsEndpoint(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	srv, err := New(cfg, log, testBuildInfo())
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -297,8 +345,8 @@ func TestMetricsEndpoint(t *testing.T) {
 	// Check for expected metrics
 	bodyStr := string(body)
 	expectedMetrics := []string{
-		"app_info",
-		"app_uptime_seconds",
+		"test_app_info",
+		"test_app_uptime_seconds",
 	}
 
 	for _, metric := range expectedMetrics {
@@ -310,15 +358,18 @@ func TestMetricsEndpoint(t *testing.T) {
 
 func TestGracefulShutdownTimeout(t *testing.T) {
 	cfg := &config.Config{
-		APIPort:         18090,
-		APIHost:         "127.0.0.1",
-		ProbePort:       18091,
-		ProbeHost:       "127.0.0.1",
-		MetricsPort:     19095,
-		MetricsHost:     "127.0.0.1",
-		LogLevel:        "error",
-		LogFormat:       "json",
-		ShutdownTimeout: 1 * time.Second,
+		APIPort:                  18090,
+		APIHost:                  "127.0.0.1",
+		ProbePort:                18091,
+		ProbeHost:                "127.0.0.1",
+		MetricsPort:              19095,
+		MetricsHost:              "127.0.0.1",
+		LogLevel:                 "error",
+		LogFormat:                "json",
+		ShutdownTimeout:          1 * time.Second,
+		HealthCheckTimeout:       5 * time.Second,
+		HealthCheckCacheDuration: 10 * time.Second,
+		MetricsNamespace:         "test",
 	}
 
 	log, err := logger.New("error", "json")
@@ -326,7 +377,7 @@ func TestGracefulShutdownTimeout(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 
-	srv, err := New(cfg, log)
+	srv, err := New(cfg, log, testBuildInfo())
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
