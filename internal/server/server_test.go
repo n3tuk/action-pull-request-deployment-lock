@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -297,7 +298,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	}
 
 	for _, metric := range expectedMetrics {
-		if !contains(bodyStr, metric) {
+		if !strings.Contains(bodyStr, metric) {
 			t.Errorf("Metrics output does not contain %s", metric)
 		}
 	}
@@ -340,17 +341,4 @@ func TestGracefulShutdownTimeout(t *testing.T) {
 
 	// This should complete quickly even with short timeout
 	_ = srv.Shutdown(ctx)
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsAt(s, substr))
-}
-
-func containsAt(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
