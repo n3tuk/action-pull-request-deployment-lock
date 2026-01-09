@@ -33,6 +33,13 @@ type Config struct {
 
 	// Graceful shutdown timeout
 	ShutdownTimeout time.Duration
+
+	// Health check settings
+	HealthCheckTimeout       time.Duration
+	HealthCheckCacheDuration time.Duration
+
+	// Metrics settings
+	MetricsNamespace string
 }
 
 // Load reads configuration from environment variables, config file, and flags.
@@ -50,6 +57,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("log.level", "info")
 	viper.SetDefault("log.format", "json")
 	viper.SetDefault("shutdown.timeout", "30s")
+	viper.SetDefault("health.check_timeout", "5s")
+	viper.SetDefault("health.cache_duration", "10s")
 
 	// Enable environment variable support with automatic replacement
 	viper.SetEnvPrefix("LOCK")
@@ -68,17 +77,18 @@ func Load() (*Config, error) {
 
 	// Parse configuration
 	cfg := &Config{
-		APIPort:     viper.GetInt("api.port"),
-		APIHost:     viper.GetString("api.host"),
-		ProbePort:   viper.GetInt("probe.port"),
-		ProbeHost:   viper.GetString("probe.host"),
-		MetricsPort: viper.GetInt("metrics.port"),
-		MetricsHost: viper.GetString("metrics.host"),
-		TLSEnabled:  viper.GetBool("tls.enabled"),
-		TLSCert:     viper.GetString("tls.cert"),
-		TLSKey:      viper.GetString("tls.key"),
-		LogLevel:    viper.GetString("log.level"),
-		LogFormat:   viper.GetString("log.format"),
+		APIPort:          viper.GetInt("api.port"),
+		APIHost:          viper.GetString("api.host"),
+		ProbePort:        viper.GetInt("probe.port"),
+		ProbeHost:        viper.GetString("probe.host"),
+		MetricsPort:      viper.GetInt("metrics.port"),
+		MetricsHost:      viper.GetString("metrics.host"),
+		TLSEnabled:       viper.GetBool("tls.enabled"),
+		TLSCert:          viper.GetString("tls.cert"),
+		TLSKey:           viper.GetString("tls.key"),
+		LogLevel:         viper.GetString("log.level"),
+		LogFormat:        viper.GetString("log.format"),
+		MetricsNamespace: "deployment_lock", // Fixed value, not configurable
 	}
 
 	// Parse shutdown timeout
@@ -87,6 +97,20 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid shutdown timeout: %w", err)
 	}
 	cfg.ShutdownTimeout = timeout
+
+	// Parse health check timeout
+	healthTimeout, err := time.ParseDuration(viper.GetString("health.check_timeout"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid health check timeout: %w", err)
+	}
+	cfg.HealthCheckTimeout = healthTimeout
+
+	// Parse health check cache duration
+	cacheDuration, err := time.ParseDuration(viper.GetString("health.cache_duration"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid health check cache duration: %w", err)
+	}
+	cfg.HealthCheckCacheDuration = cacheDuration
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
@@ -137,6 +161,18 @@ func (c *Config) Validate() error {
 
 	if c.ShutdownTimeout < 0 {
 		return fmt.Errorf("invalid shutdown timeout: %s (must be positive)", c.ShutdownTimeout)
+	}
+
+	if c.HealthCheckTimeout <= 0 {
+		return fmt.Errorf("invalid health check timeout: %s (must be positive)", c.HealthCheckTimeout)
+	}
+
+	if c.HealthCheckCacheDuration < 0 {
+		return fmt.Errorf("invalid health check cache duration: %s (must be non-negative, zero disables caching)", c.HealthCheckCacheDuration)
+	}
+
+	if c.MetricsNamespace == "" {
+		return fmt.Errorf("metrics namespace cannot be empty")
 	}
 
 	return nil

@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,11 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/config"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
+	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
 )
 
 // Server manages the three HTTP servers (API, Probe, Metrics).
@@ -28,17 +29,13 @@ type Server struct {
 	metricsServer *http.Server
 	startTime     time.Time
 	shutdownChan  chan struct{}
-
-	// Prometheus metrics
-	appInfo       *prometheus.GaugeVec
-	appUptime     prometheus.Counter
-	httpRequests  *prometheus.CounterVec
-	httpDuration  *prometheus.HistogramVec
-	requestsInFlt prometheus.Gauge
+	metrics       *metrics.Metrics
+	healthManager *health.Manager
+	runtimeTicker *time.Ticker
 }
 
 // New creates a new Server instance.
-func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
+func New(cfg *config.Config, logger *zap.Logger, buildInfo map[string]string) (*Server, error) {
 	s := &Server{
 		cfg:          cfg,
 		logger:       logger,
@@ -47,7 +44,18 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	}
 
 	// Initialize metrics
-	s.initMetrics()
+	s.metrics = metrics.NewMetrics(cfg.MetricsNamespace, buildInfo)
+
+	// Initialize health manager
+	s.healthManager = health.NewManager(
+		logger,
+		cfg.HealthCheckCacheDuration,
+		cfg.HealthCheckTimeout,
+	)
+
+	// Register health checks
+	s.healthManager.RegisterChecker(health.NewServerChecker(logger))
+	s.healthManager.RegisterChecker(health.NewReadinessChecker(logger))
 
 	// Setup servers
 	if err := s.setupServers(); err != nil {
@@ -55,74 +63,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	}
 
 	return s, nil
-}
-
-// initMetrics initializes Prometheus metrics.
-func (s *Server) initMetrics() {
-	s.appInfo = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "app_info",
-			Help: "Application build information",
-		},
-		[]string{"version"},
-	)
-
-	s.appUptime = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "app_uptime_seconds",
-			Help: "Application uptime in seconds",
-		},
-	)
-
-	s.httpRequests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests",
-		},
-		[]string{"server", "method", "path", "status"},
-	)
-
-	s.httpDuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request duration in seconds",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"server", "method", "path"},
-	)
-
-	s.requestsInFlt = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "http_requests_in_flight",
-			Help: "Current number of HTTP requests being processed",
-		},
-	)
-
-	// Register metrics, checking if already registered (for tests)
-	// In tests, multiple server instances may be created
-	for _, collector := range []prometheus.Collector{
-		s.appInfo,
-		s.appUptime,
-		s.httpRequests,
-		s.httpDuration,
-		s.requestsInFlt,
-	} {
-		if err := prometheus.Register(collector); err != nil {
-			// If it's an AlreadyRegisteredError, this is expected in tests; skip it.
-			var alreadyRegisteredErr *prometheus.AlreadyRegisteredError
-			if errors.As(err, &alreadyRegisteredErr) {
-				continue
-			}
-
-			// This is an unexpected error; log it but do not panic.
-			if s.logger != nil {
-				s.logger.Error("failed to register Prometheus collector", zap.Error(err))
-			}
-		}
-	}
-
-	// Set app info
-	s.appInfo.WithLabelValues("dev").Set(1)
 }
 
 // setupServers configures the three HTTP servers.
@@ -171,11 +111,11 @@ func (s *Server) setupServers() error {
 func (s *Server) setupAPIRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	// Middleware
+	// Middleware - MetricsMiddleware should be before Recoverer to ensure consistent metric recording
 	r.Use(middleware.RequestID)
-	r.Use(s.loggingMiddleware("api"))
+	r.Use(internalMiddleware.LoggingMiddleware(s.logger, "api"))
+	r.Use(internalMiddleware.MetricsMiddleware(s.metrics, s.logger))
 	r.Use(middleware.Recoverer)
-	r.Use(s.metricsMiddleware("api"))
 
 	// Routes
 	setupAPIRoutes(r, s.logger)
@@ -187,8 +127,8 @@ func (s *Server) setupAPIRouter() *chi.Mux {
 func (s *Server) setupProbeRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	// Routes
-	setupProbeRoutes(r, s.logger)
+	// Routes with health manager
+	setupProbeRoutes(r, s.logger, s.healthManager, s.metrics)
 
 	return r
 }
@@ -198,50 +138,9 @@ func (s *Server) setupMetricsRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	// Routes
-	r.Handle("/metrics", promhttp.Handler())
+	r.Handle("/metrics", promhttp.HandlerFor(s.metrics.Registry(), promhttp.HandlerOpts{}))
 
 	return r
-}
-
-// loggingMiddleware logs HTTP requests.
-func (s *Server) loggingMiddleware(serverName string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-			next.ServeHTTP(ww, r)
-
-			s.logger.Info("HTTP request",
-				zap.String("server", serverName),
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.Int("status", ww.Status()),
-				zap.Duration("duration", time.Since(start)),
-				zap.String("request_id", middleware.GetReqID(r.Context())),
-			)
-		})
-	}
-}
-
-// metricsMiddleware records HTTP metrics.
-func (s *Server) metricsMiddleware(serverName string) func(next http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			s.requestsInFlt.Inc()
-			defer s.requestsInFlt.Dec()
-
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-			next.ServeHTTP(ww, r)
-
-			duration := time.Since(start).Seconds()
-			status := fmt.Sprintf("%d", ww.Status())
-
-			s.httpRequests.WithLabelValues(serverName, r.Method, r.URL.Path, status).Inc()
-			s.httpDuration.WithLabelValues(serverName, r.Method, r.URL.Path).Observe(duration)
-		})
-	}
 }
 
 // Start starts all three HTTP servers.
@@ -295,21 +194,26 @@ func (s *Server) Start() error {
 	case err := <-errChan:
 		return err
 	default:
+		// Mark servers as running in health manager
+		s.healthManager.SetServersRunning(true)
+
 		// Start uptime counter goroutine
-		go s.updateUptime()
+		go s.updateMetrics()
+
 		return nil
 	}
 }
 
-// updateUptime updates the uptime metric periodically.
-func (s *Server) updateUptime() {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+// updateMetrics updates runtime metrics periodically.
+func (s *Server) updateMetrics() {
+	s.runtimeTicker = time.NewTicker(1 * time.Second)
+	defer s.runtimeTicker.Stop()
 
 	for {
 		select {
-		case <-ticker.C:
-			s.appUptime.Add(1)
+		case <-s.runtimeTicker.C:
+			s.metrics.AppUptimeSeconds.Add(1)
+			s.metrics.UpdateRuntimeMetrics()
 		case <-s.shutdownChan:
 			return
 		}
@@ -319,6 +223,9 @@ func (s *Server) updateUptime() {
 // Shutdown gracefully shuts down all servers.
 func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Info("Shutting down servers gracefully")
+
+	// Mark as shutting down in health manager
+	s.healthManager.SetShuttingDown(true)
 
 	// Signal the uptime goroutine to stop
 	close(s.shutdownChan)

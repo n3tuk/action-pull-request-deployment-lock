@@ -54,3 +54,9 @@ temp/
 # OS generated files
 Thumbs.db
 .DS_Store
+
+# Built binaries in repository root
+/service
+/client
+bin/service
+bin/client

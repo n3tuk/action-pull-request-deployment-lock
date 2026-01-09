@@ -63,6 +63,8 @@ func init() {
 	rootCmd.Flags().String("log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.Flags().String("log-format", "json", "Log format (json, console)")
 	rootCmd.Flags().Duration("shutdown-timeout", 30*time.Second, "Graceful shutdown timeout (e.g., 30s)")
+	rootCmd.Flags().Duration("health-check-timeout", 5*time.Second, "Health check timeout (e.g., 5s)")
+	rootCmd.Flags().Duration("health-cache-duration", 10*time.Second, "Health check cache duration (e.g., 10s)")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("api.port", rootCmd.Flags().Lookup("api-port"))
@@ -77,6 +79,8 @@ func init() {
 	_ = viper.BindPFlag("log.level", rootCmd.Flags().Lookup("log-level"))
 	_ = viper.BindPFlag("log.format", rootCmd.Flags().Lookup("log-format"))
 	_ = viper.BindPFlag("shutdown.timeout", rootCmd.Flags().Lookup("shutdown-timeout"))
+	_ = viper.BindPFlag("health.check_timeout", rootCmd.Flags().Lookup("health-check-timeout"))
+	_ = viper.BindPFlag("health.cache_duration", rootCmd.Flags().Lookup("health-cache-duration"))
 }
 
 func runServer(cmd *cobra.Command, args []string) error {
@@ -99,8 +103,13 @@ func runServer(cmd *cobra.Command, args []string) error {
 		zap.String("date", date),
 	)
 
-	// Create server
-	srv, err := server.New(cfg, log)
+	// Create server with build info
+	buildInfo := map[string]string{
+		"version": version,
+		"commit":  commit,
+		"date":    date,
+	}
+	srv, err := server.New(cfg, log, buildInfo)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %w", err)
 	}
