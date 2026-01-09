@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/store"
 )
 
 // Config holds all configuration for the service.
@@ -40,6 +42,9 @@ type Config struct {
 
 	// Metrics settings
 	MetricsNamespace string
+
+	// Olric store settings
+	Olric *store.OlricConfig
 }
 
 // Load reads configuration from environment variables, config file, and flags.
@@ -59,6 +64,23 @@ func Load() (*Config, error) {
 	viper.SetDefault("shutdown.timeout", "30s")
 	viper.SetDefault("health.check_timeout", "5s")
 	viper.SetDefault("health.cache_duration", "10s")
+
+	// Olric defaults
+	viper.SetDefault("olric.bind_addr", "0.0.0.0")
+	viper.SetDefault("olric.bind_port", 3320)
+	viper.SetDefault("olric.join_addrs", []string{})
+	viper.SetDefault("olric.replication_mode", "async")
+	viper.SetDefault("olric.replication_factor", 1)
+	viper.SetDefault("olric.partition_count", 271)
+	viper.SetDefault("olric.backup_count", 1)
+	viper.SetDefault("olric.backup_mode", "async")
+	viper.SetDefault("olric.member_count_quorum", 1)
+	viper.SetDefault("olric.join_retry_interval", "1s")
+	viper.SetDefault("olric.max_join_attempts", 30)
+	viper.SetDefault("olric.log_level", "WARN")
+	viper.SetDefault("olric.keep_alive_period", "30s")
+	viper.SetDefault("olric.request_timeout", "5s")
+	viper.SetDefault("olric.dmap_name", "deployment-locks")
 
 	// Enable environment variable support with automatic replacement
 	viper.SetEnvPrefix("LOCK")
@@ -111,6 +133,43 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid health check cache duration: %w", err)
 	}
 	cfg.HealthCheckCacheDuration = cacheDuration
+
+	// Parse Olric configuration
+	olricCfg := &store.OlricConfig{
+		BindAddr:          viper.GetString("olric.bind_addr"),
+		BindPort:          viper.GetInt("olric.bind_port"),
+		JoinAddrs:         viper.GetStringSlice("olric.join_addrs"),
+		ReplicationMode:   viper.GetString("olric.replication_mode"),
+		ReplicationFactor: viper.GetInt("olric.replication_factor"),
+		PartitionCount:    uint64(viper.GetInt("olric.partition_count")),
+		BackupCount:       viper.GetInt("olric.backup_count"),
+		BackupMode:        viper.GetString("olric.backup_mode"),
+		MemberCountQuorum: viper.GetInt("olric.member_count_quorum"),
+		MaxJoinAttempts:   viper.GetInt("olric.max_join_attempts"),
+		LogLevel:          viper.GetString("olric.log_level"),
+		DMapName:          viper.GetString("olric.dmap_name"),
+	}
+
+	// Parse Olric time durations
+	joinRetryInterval, err := time.ParseDuration(viper.GetString("olric.join_retry_interval"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid olric join retry interval: %w", err)
+	}
+	olricCfg.JoinRetryInterval = joinRetryInterval
+
+	keepAlivePeriod, err := time.ParseDuration(viper.GetString("olric.keep_alive_period"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid olric keep alive period: %w", err)
+	}
+	olricCfg.KeepAlivePeriod = keepAlivePeriod
+
+	requestTimeout, err := time.ParseDuration(viper.GetString("olric.request_timeout"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid olric request timeout: %w", err)
+	}
+	olricCfg.RequestTimeout = requestTimeout
+
+	cfg.Olric = olricCfg
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
@@ -173,6 +232,13 @@ func (c *Config) Validate() error {
 
 	if c.MetricsNamespace == "" {
 		return fmt.Errorf("metrics namespace cannot be empty")
+	}
+
+	// Validate Olric configuration
+	if c.Olric != nil {
+		if err := c.Olric.Validate(); err != nil {
+			return fmt.Errorf("invalid olric configuration: %w", err)
+		}
 	}
 
 	return nil

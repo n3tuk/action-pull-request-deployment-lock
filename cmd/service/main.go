@@ -66,6 +66,23 @@ func init() {
 	rootCmd.Flags().Duration("health-check-timeout", 5*time.Second, "Health check timeout (e.g., 5s)")
 	rootCmd.Flags().Duration("health-cache-duration", 10*time.Second, "Health check cache duration (e.g., 10s)")
 
+	// Olric configuration flags
+	rootCmd.Flags().String("olric-bind-addr", "0.0.0.0", "Olric bind address")
+	rootCmd.Flags().Int("olric-bind-port", 3320, "Olric bind port")
+	rootCmd.Flags().StringSlice("olric-join-addrs", []string{}, "Olric cluster join addresses")
+	rootCmd.Flags().String("olric-replication-mode", "async", "Olric replication mode (sync/async)")
+	rootCmd.Flags().Int("olric-replication-factor", 1, "Olric replication factor")
+	rootCmd.Flags().Int("olric-partition-count", 271, "Olric partition count")
+	rootCmd.Flags().Int("olric-backup-count", 1, "Olric backup count")
+	rootCmd.Flags().String("olric-backup-mode", "async", "Olric backup mode (sync/async)")
+	rootCmd.Flags().Int("olric-member-count-quorum", 1, "Olric member count quorum")
+	rootCmd.Flags().Duration("olric-join-retry-interval", 1*time.Second, "Olric join retry interval")
+	rootCmd.Flags().Int("olric-max-join-attempts", 30, "Olric max join attempts")
+	rootCmd.Flags().String("olric-log-level", "WARN", "Olric log level (DEBUG/INFO/WARN/ERROR)")
+	rootCmd.Flags().Duration("olric-keep-alive-period", 30*time.Second, "Olric keep alive period")
+	rootCmd.Flags().Duration("olric-request-timeout", 5*time.Second, "Olric request timeout")
+	rootCmd.Flags().String("olric-dmap-name", "deployment-locks", "Olric DMap name")
+
 	// Bind flags to viper
 	_ = viper.BindPFlag("api.port", rootCmd.Flags().Lookup("api-port"))
 	_ = viper.BindPFlag("api.host", rootCmd.Flags().Lookup("api-host"))
@@ -81,6 +98,21 @@ func init() {
 	_ = viper.BindPFlag("shutdown.timeout", rootCmd.Flags().Lookup("shutdown-timeout"))
 	_ = viper.BindPFlag("health.check_timeout", rootCmd.Flags().Lookup("health-check-timeout"))
 	_ = viper.BindPFlag("health.cache_duration", rootCmd.Flags().Lookup("health-cache-duration"))
+	_ = viper.BindPFlag("olric.bind_addr", rootCmd.Flags().Lookup("olric-bind-addr"))
+	_ = viper.BindPFlag("olric.bind_port", rootCmd.Flags().Lookup("olric-bind-port"))
+	_ = viper.BindPFlag("olric.join_addrs", rootCmd.Flags().Lookup("olric-join-addrs"))
+	_ = viper.BindPFlag("olric.replication_mode", rootCmd.Flags().Lookup("olric-replication-mode"))
+	_ = viper.BindPFlag("olric.replication_factor", rootCmd.Flags().Lookup("olric-replication-factor"))
+	_ = viper.BindPFlag("olric.partition_count", rootCmd.Flags().Lookup("olric-partition-count"))
+	_ = viper.BindPFlag("olric.backup_count", rootCmd.Flags().Lookup("olric-backup-count"))
+	_ = viper.BindPFlag("olric.backup_mode", rootCmd.Flags().Lookup("olric-backup-mode"))
+	_ = viper.BindPFlag("olric.member_count_quorum", rootCmd.Flags().Lookup("olric-member-count-quorum"))
+	_ = viper.BindPFlag("olric.join_retry_interval", rootCmd.Flags().Lookup("olric-join-retry-interval"))
+	_ = viper.BindPFlag("olric.max_join_attempts", rootCmd.Flags().Lookup("olric-max-join-attempts"))
+	_ = viper.BindPFlag("olric.log_level", rootCmd.Flags().Lookup("olric-log-level"))
+	_ = viper.BindPFlag("olric.keep_alive_period", rootCmd.Flags().Lookup("olric-keep-alive-period"))
+	_ = viper.BindPFlag("olric.request_timeout", rootCmd.Flags().Lookup("olric-request-timeout"))
+	_ = viper.BindPFlag("olric.dmap_name", rootCmd.Flags().Lookup("olric-dmap-name"))
 }
 
 func runServer(cmd *cobra.Command, args []string) error {

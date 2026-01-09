@@ -18,6 +18,7 @@ import (
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
 	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/store"
 )
 
 // Server manages the three HTTP servers (API, Probe, Metrics).
@@ -32,6 +33,9 @@ type Server struct {
 	metrics       *metrics.Metrics
 	healthManager *health.Manager
 	runtimeTicker *time.Ticker
+	store         store.Store
+	storeMetrics  *store.OlricMetrics
+	metricsCollector *store.OlricMetricsCollector
 }
 
 // New creates a new Server instance.
@@ -56,6 +60,37 @@ func New(cfg *config.Config, logger *zap.Logger, buildInfo map[string]string) (*
 	// Register health checks
 	s.healthManager.RegisterChecker(health.NewServerChecker(logger))
 	s.healthManager.RegisterChecker(health.NewReadinessChecker(logger))
+
+	// Initialize Olric store
+	logger.Info("Initializing Olric store")
+	olricStore, err := store.NewOlricStore(context.Background(), cfg.Olric, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize olric store: %w", err)
+	}
+	s.store = olricStore
+
+	// Initialize Olric metrics
+	s.storeMetrics = store.NewOlricMetrics(cfg.MetricsNamespace, s.metrics.Registry())
+
+	// Start Olric metrics collector (15 second interval)
+	s.metricsCollector = store.NewOlricMetricsCollector(
+		logger,
+		olricStore,
+		s.storeMetrics,
+		15*time.Second,
+		olricStore,
+	)
+	s.metricsCollector.Start()
+
+	// Register Olric health checks
+	s.healthManager.RegisterChecker(store.NewConnectionHealthChecker(logger, s.store))
+	s.healthManager.RegisterChecker(store.NewClusterHealthChecker(
+		logger,
+		s.store,
+		cfg.Olric.MemberCountQuorum,
+		cfg.Olric.IsSingleNode(),
+	))
+	s.healthManager.RegisterChecker(store.NewStorageHealthChecker(logger, s.store))
 
 	// Setup servers
 	if err := s.setupServers(); err != nil {
@@ -230,8 +265,13 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	// Signal the uptime goroutine to stop
 	close(s.shutdownChan)
 
+	// Stop Olric metrics collector
+	if s.metricsCollector != nil {
+		s.metricsCollector.Stop()
+	}
+
 	var wg sync.WaitGroup
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 4)
 
 	// Shutdown API server first
 	wg.Add(1)
@@ -253,7 +293,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		}
 	}()
 
-	// Shutdown probe server last
+	// Shutdown probe server third
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -263,7 +303,17 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		}
 	}()
 
+	// Wait for all HTTP servers to shut down
 	wg.Wait()
+
+	// Now shutdown Olric store last
+	if s.store != nil {
+		s.logger.Info("Shutting down Olric store")
+		if err := s.store.Close(ctx); err != nil {
+			errChan <- fmt.Errorf("olric store shutdown error: %w", err)
+		}
+	}
+
 	close(errChan)
 
 	for err := range errChan {
