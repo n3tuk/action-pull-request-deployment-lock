@@ -59,7 +59,6 @@ func Load() (*Config, error) {
 	viper.SetDefault("shutdown.timeout", "30s")
 	viper.SetDefault("health.check_timeout", "5s")
 	viper.SetDefault("health.cache_duration", "10s")
-	viper.SetDefault("metrics.namespace", "deployment_lock")
 
 	// Enable environment variable support with automatic replacement
 	viper.SetEnvPrefix("LOCK")
@@ -89,7 +88,7 @@ func Load() (*Config, error) {
 		TLSKey:           viper.GetString("tls.key"),
 		LogLevel:         viper.GetString("log.level"),
 		LogFormat:        viper.GetString("log.format"),
-		MetricsNamespace: viper.GetString("metrics.namespace"),
+		MetricsNamespace: "deployment_lock", // Fixed value, not configurable
 	}
 
 	// Parse shutdown timeout
@@ -164,12 +163,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid shutdown timeout: %s (must be positive)", c.ShutdownTimeout)
 	}
 
-	if c.HealthCheckTimeout < 0 {
+	if c.HealthCheckTimeout <= 0 {
 		return fmt.Errorf("invalid health check timeout: %s (must be positive)", c.HealthCheckTimeout)
 	}
 
 	if c.HealthCheckCacheDuration < 0 {
-		return fmt.Errorf("invalid health check cache duration: %s (must be positive)", c.HealthCheckCacheDuration)
+		return fmt.Errorf("invalid health check cache duration: %s (must be non-negative, zero disables caching)", c.HealthCheckCacheDuration)
 	}
 
 	if c.MetricsNamespace == "" {

@@ -62,28 +62,6 @@ func MetricsMiddleware(m *metrics.Metrics, logger *zap.Logger) func(next http.Ha
 			// Wrap response writer to capture status and size
 			rw := newResponseWriter(w)
 
-			// Handle panics
-			defer func() {
-				if err := recover(); err != nil {
-					logger.Error("Panic in HTTP handler",
-						zap.String("method", r.Method),
-						zap.String("path", routePattern),
-						zap.Any("error", err),
-					)
-
-					// Record metrics for panic
-					rw.statusCode = http.StatusInternalServerError
-					duration := time.Since(start).Seconds()
-					status := strconv.Itoa(rw.statusCode)
-
-					m.HTTPRequestsTotal.WithLabelValues(r.Method, routePattern, status).Inc()
-					m.HTTPRequestDurationSeconds.WithLabelValues(r.Method, routePattern, status).Observe(duration)
-
-					// Re-panic to let the recovery middleware handle it
-					panic(err)
-				}
-			}()
-
 			// Call the next handler
 			next.ServeHTTP(rw, r)
 

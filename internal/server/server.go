@@ -111,11 +111,11 @@ func (s *Server) setupServers() error {
 func (s *Server) setupAPIRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	// Middleware
+	// Middleware - MetricsMiddleware should be before Recoverer to ensure consistent metric recording
 	r.Use(middleware.RequestID)
 	r.Use(internalMiddleware.LoggingMiddleware(s.logger, "api"))
-	r.Use(middleware.Recoverer)
 	r.Use(internalMiddleware.MetricsMiddleware(s.metrics, s.logger))
+	r.Use(middleware.Recoverer)
 
 	// Routes
 	setupAPIRoutes(r, s.logger)

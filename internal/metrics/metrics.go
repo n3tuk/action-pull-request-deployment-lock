@@ -231,7 +231,10 @@ func (m *Metrics) UpdateRuntimeMetrics() {
 
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	m.AppGoThreads.Set(float64(memStats.NumGC))
+	
+	// Track the number of OS threads created by the Go runtime
+	// Note: This uses GOMAXPROCS as a proxy since there's no direct API for active thread count
+	m.AppGoThreads.Set(float64(runtime.GOMAXPROCS(0)))
 
 	// Get recent GC pause time
 	if memStats.NumGC > 0 {
