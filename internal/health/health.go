@@ -14,7 +14,7 @@ const (
 	// StatusStarting indicates the service is still starting.
 	StatusStarting Status = "starting"
 	// StatusNotReady indicates the service is not ready to handle requests.
-	StatusNotReady Status = "not_ready"
+	StatusNotReady Status = "not-ready"
 	// StatusError indicates the check failed.
 	StatusError Status = "error"
 )

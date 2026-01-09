@@ -141,8 +141,8 @@ func LoggingMiddleware(logger *zap.Logger, serverName string) func(next http.Han
 				zap.String("route", routePattern),
 				zap.Int("status", ww.Status()),
 				zap.Duration("duration", time.Since(start)),
-				zap.String("request_id", middleware.GetReqID(r.Context())),
-				zap.String("remote_addr", r.RemoteAddr),
+				zap.String("request-id", middleware.GetReqID(r.Context())),
+				zap.String("remote-addr", r.RemoteAddr),
 			)
 		})
 	}

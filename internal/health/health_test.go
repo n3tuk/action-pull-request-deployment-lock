@@ -8,43 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func TestConfigChecker(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	checker := NewConfigChecker(logger)
-
-	if checker.Name() != "config" {
-		t.Errorf("Name() = %s, want config", checker.Name())
-	}
-
-	result := checker.Check(context.Background())
-	if result.Status != StatusOK {
-		t.Errorf("Check() status = %s, want %s", result.Status, StatusOK)
-	}
-}
-
-func TestLoggerChecker(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
-	checker := NewLoggerChecker(logger)
-
-	if checker.Name() != "logger" {
-		t.Errorf("Name() = %s, want logger", checker.Name())
-	}
-
-	result := checker.Check(context.Background())
-	if result.Status != StatusOK {
-		t.Errorf("Check() status = %s, want %s", result.Status, StatusOK)
-	}
-}
-
-func TestLoggerCheckerNil(t *testing.T) {
-	checker := NewLoggerChecker(nil)
-
-	result := checker.Check(context.Background())
-	if result.Status != StatusError {
-		t.Errorf("Check() status = %s, want %s", result.Status, StatusError)
-	}
-}
-
 func TestServerChecker(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	checker := NewServerChecker(logger)
@@ -108,18 +71,14 @@ func TestManager(t *testing.T) {
 	manager := NewManager(logger, 10*time.Second, 5*time.Second)
 
 	// Register checkers
-	configChecker := NewConfigChecker(logger)
-	loggerChecker := NewLoggerChecker(logger)
 	serverChecker := NewServerChecker(logger)
 
-	manager.RegisterChecker(configChecker)
-	manager.RegisterChecker(loggerChecker)
 	manager.RegisterChecker(serverChecker)
 
 	// Check all
 	results := manager.CheckAll(context.Background())
-	if len(results) != 3 {
-		t.Errorf("CheckAll() returned %d results, want 3", len(results))
+	if len(results) != 1 {
+		t.Errorf("CheckAll() returned %d results, want 1", len(results))
 	}
 
 	// Verify results contain expected checks
@@ -128,7 +87,7 @@ func TestManager(t *testing.T) {
 		names[result.Name] = true
 	}
 
-	expectedNames := []string{"config", "logger", "servers"}
+	expectedNames := []string{"servers"}
 	for _, name := range expectedNames {
 		if !names[name] {
 			t.Errorf("CheckAll() did not return check %s", name)
@@ -140,7 +99,7 @@ func TestManagerCaching(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 	manager := NewManager(logger, 100*time.Millisecond, 5*time.Second)
 
-	checker := NewConfigChecker(logger)
+	checker := NewServerChecker(logger)
 	manager.RegisterChecker(checker)
 
 	// First call
@@ -230,12 +189,8 @@ func TestManagerGetStartupStatus(t *testing.T) {
 	// Use short cache duration for testing
 	manager := NewManager(logger, 10*time.Millisecond, 5*time.Second)
 
-	configChecker := NewConfigChecker(logger)
-	loggerChecker := NewLoggerChecker(logger)
 	serverChecker := NewServerChecker(logger)
 
-	manager.RegisterChecker(configChecker)
-	manager.RegisterChecker(loggerChecker)
 	manager.RegisterChecker(serverChecker)
 
 	// Get startup status (servers not running yet)
@@ -244,8 +199,8 @@ func TestManagerGetStartupStatus(t *testing.T) {
 		t.Errorf("Startup status = %s, want %s", response.Status, StatusStarting)
 	}
 
-	if len(response.Checks) != 3 {
-		t.Errorf("Checks count = %d, want 3", len(response.Checks))
+	if len(response.Checks) != 1 {
+		t.Errorf("Checks count = %d, want 1", len(response.Checks))
 	}
 
 	// Set servers running

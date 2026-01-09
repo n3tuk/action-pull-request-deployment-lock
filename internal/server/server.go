@@ -54,8 +54,6 @@ func New(cfg *config.Config, logger *zap.Logger, buildInfo map[string]string) (*
 	)
 
 	// Register health checks
-	s.healthManager.RegisterChecker(health.NewConfigChecker(logger))
-	s.healthManager.RegisterChecker(health.NewLoggerChecker(logger))
 	s.healthManager.RegisterChecker(health.NewServerChecker(logger))
 	s.healthManager.RegisterChecker(health.NewReadinessChecker(logger))
 
