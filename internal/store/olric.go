@@ -68,6 +68,9 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 	client := db.NewEmbeddedClient()
 	store.client = client
 
+	// Give Olric a moment to fully initialize
+	time.Sleep(100 * time.Millisecond)
+
 	// Wait for cluster to be ready
 	if err := store.waitForCluster(ctx); err != nil {
 		// Clean up on failure
@@ -112,7 +115,7 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 
 	olricLogger := log.New(logFilter, "", log.LstdFlags)
 
-	c := config.New("lan")
+	c := config.New("local")  // Use "local" for single-node, less network overhead
 	c.BindAddr = s.config.BindAddr
 	c.BindPort = s.config.BindPort
 	c.KeepAlivePeriod = s.config.KeepAlivePeriod
@@ -125,6 +128,7 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 	c.Logger = olricLogger
 	c.JoinRetryInterval = s.config.JoinRetryInterval
 	c.MaxJoinAttempts = s.config.MaxJoinAttempts
+	c.BootstrapTimeout = 5 * time.Second // Reduce bootstrap timeout for faster startup
 
 	// Set replication mode
 	if s.config.ReplicationMode == "sync" {
