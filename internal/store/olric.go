@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/logutils"
@@ -23,6 +24,7 @@ type OlricStore struct {
 	db     *olric.Olric
 	client *olric.EmbeddedClient
 	dmap   olric.DMap
+	dmapMu sync.RWMutex
 }
 
 // NewOlricStore creates a new Olric-based store.
@@ -57,9 +59,20 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 		return nil, fmt.Errorf("failed to create olric instance: %w", err)
 	}
 
-	// Start the embedded server
-	if err := db.Start(); err != nil {
-		return nil, fmt.Errorf("failed to start olric: %w", err)
+	// Start the embedded server in a goroutine
+	// Olric's Start() method blocks until shutdown
+	startChan := make(chan error, 1)
+	go func() {
+		startChan <- db.Start()
+	}()
+
+	// Wait briefly to ensure Olric has started
+	select {
+	case err := <-startChan:
+		// If Start() returns immediately, it's an error
+		return nil, fmt.Errorf("olric start returned prematurely: %w", err)
+	case <-time.After(500 * time.Millisecond):
+		// Olric is running
 	}
 
 	store.db = db
@@ -78,13 +91,7 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 		return nil, fmt.Errorf("cluster not ready: %w", err)
 	}
 
-	// Get DMap for storing locks
-	dmap, err := client.NewDMap(cfg.DMapName)
-	if err != nil {
-		_ = db.Shutdown(context.Background())
-		return nil, fmt.Errorf("failed to create dmap: %w", err)
-	}
-	store.dmap = dmap
+	// Note: DMap will be created lazily on first use to avoid hanging during initialization
 
 	// Get member count for logging
 	members, err := client.Members(ctx)
@@ -195,17 +202,58 @@ func (s *OlricStore) waitForCluster(ctx context.Context) error {
 	}
 }
 
+// getDMap returns the DMap, creating it lazily if needed.
+func (s *OlricStore) getDMap(ctx context.Context) (olric.DMap, error) {
+	s.dmapMu.RLock()
+	if s.dmap != nil {
+		defer s.dmapMu.RUnlock()
+		return s.dmap, nil
+	}
+	s.dmapMu.RUnlock()
+
+	s.dmapMu.Lock()
+	defer s.dmapMu.Unlock()
+
+	// Double-check after acquiring write lock
+	if s.dmap != nil {
+		return s.dmap, nil
+	}
+
+	// Create DMap
+	dmap, err := s.client.NewDMap(s.config.DMapName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dmap: %w", err)
+	}
+
+	s.dmap = dmap
+	s.logger.Debug("Created DMap",
+		zap.String("name", s.config.DMapName),
+	)
+
+	return s.dmap, nil
+}
+
 // Put stores a value with an optional TTL.
 func (s *OlricStore) Put(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
-	if ttl > 0 {
-		return s.dmap.Put(ctx, key, value, olric.EX(ttl))
+	dmap, err := s.getDMap(ctx)
+	if err != nil {
+		return err
 	}
-	return s.dmap.Put(ctx, key, value)
+	
+	if ttl > 0 {
+		return dmap.Put(ctx, key, value, olric.EX(ttl))
+	}
+	return dmap.Put(ctx, key, value)
 }
 
 // Get retrieves a value for the given key.
 func (s *OlricStore) Get(ctx context.Context, key string) (interface{}, error) {
-	resp, err := s.dmap.Get(ctx, key)
+	dmap, err := s.getDMap(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
+	resp, err := dmap.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -219,9 +267,14 @@ func (s *OlricStore) Get(ctx context.Context, key string) (interface{}, error) {
 
 // Delete removes a value for the given key.
 func (s *OlricStore) Delete(ctx context.Context, key string) error {
+	dmap, err := s.getDMap(ctx)
+	if err != nil {
+		return err
+	}
+	
 	// Olric returns olric.ErrKeyNotFound if the key doesn't exist, which is fine
 	// We want Delete to be idempotent
-	_, err := s.dmap.Delete(ctx, key)
+	_, err = dmap.Delete(ctx, key)
 	if err != nil && err.Error() != "key not found" {
 		return err
 	}
@@ -230,7 +283,12 @@ func (s *OlricStore) Delete(ctx context.Context, key string) error {
 
 // Exists checks if a key exists in the store.
 func (s *OlricStore) Exists(ctx context.Context, key string) (bool, error) {
-	_, err := s.dmap.Get(ctx, key)
+	dmap, err := s.getDMap(ctx)
+	if err != nil {
+		return false, err
+	}
+	
+	_, err = dmap.Get(ctx, key)
 	if err != nil {
 		if err.Error() == "key not found" {
 			return false, nil
