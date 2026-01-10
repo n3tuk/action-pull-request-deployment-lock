@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"sync"
 	"time"
 
@@ -109,15 +108,11 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 // createOlricConfig creates an Olric configuration from the OlricConfig.
 func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 	// Create Olric logger with appropriate level
+	// Route all Olric logs through our own logger to maintain consistent logging
 	logFilter := &logutils.LevelFilter{
 		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
 		MinLevel: logutils.LogLevel(s.config.LogLevel),
-		Writer:   io.Discard, // We'll use our own logger via zap
-	}
-
-	// If log level is DEBUG or INFO, route to stdout
-	if s.config.LogLevel == "DEBUG" || s.config.LogLevel == "INFO" {
-		logFilter.Writer = os.Stdout
+		Writer:   io.Discard, // Discard Olric logs, use our own structured logging
 	}
 
 	olricLogger := log.New(logFilter, "", log.LstdFlags)
@@ -129,7 +124,7 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 	c.PartitionCount = s.config.PartitionCount
 	c.ReplicaCount = s.config.ReplicationFactor
 	c.ReadQuorum = 1
-	c.WriteQuorum = 1
+	c.WriteQuorum = s.config.MemberCountQuorum // Match write quorum to member count quorum for safety
 	c.MemberCountQuorum = int32(s.config.MemberCountQuorum)
 	c.LogLevel = s.config.LogLevel
 	c.Logger = olricLogger
@@ -300,18 +295,21 @@ func (s *OlricStore) Exists(ctx context.Context, key string) (bool, error) {
 
 // Ping verifies connectivity to the store.
 func (s *OlricStore) Ping(ctx context.Context) error {
-	// Check if we can reach the Olric service by doing a simple operation
-	// We'll try to check if a test key exists (which will return quickly)
-	addr := net.JoinHostPort(s.config.BindAddr, fmt.Sprintf("%d", s.config.BindPort))
-	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
-	if err != nil {
-		return fmt.Errorf("failed to connect to olric: %w", err)
+	// Use Olric's built-in PING command to verify connectivity
+	if s.client == nil {
+		return fmt.Errorf("olric client is nil")
 	}
-	defer conn.Close()
 
-	// Also verify the db is not nil
-	if s.db == nil {
-		return fmt.Errorf("olric db is nil")
+	// Ping the local node (use bind address)
+	addr := net.JoinHostPort(s.config.BindAddr, fmt.Sprintf("%d", s.config.BindPort))
+	
+	// Create a context with 2 second timeout
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	
+	_, err := s.client.Ping(pingCtx, addr, "")
+	if err != nil {
+		return fmt.Errorf("failed to ping olric: %w", err)
 	}
 
 	return nil

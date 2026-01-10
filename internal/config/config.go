@@ -65,22 +65,22 @@ func Load() (*Config, error) {
 	viper.SetDefault("health.check_timeout", "5s")
 	viper.SetDefault("health.cache_duration", "10s")
 
-	// Olric defaults
-	viper.SetDefault("olric.bind_addr", "0.0.0.0")
-	viper.SetDefault("olric.bind_port", 3320)
+	// Olric defaults - use constants from store package
+	viper.SetDefault("olric.host", store.DefaultBindAddr)
+	viper.SetDefault("olric.port", store.DefaultBindPort)
 	viper.SetDefault("olric.join_addrs", []string{})
-	viper.SetDefault("olric.replication_mode", "async")
-	viper.SetDefault("olric.replication_factor", 1)
-	viper.SetDefault("olric.partition_count", 271)
-	viper.SetDefault("olric.backup_count", 1)
-	viper.SetDefault("olric.backup_mode", "async")
-	viper.SetDefault("olric.member_count_quorum", 1)
-	viper.SetDefault("olric.join_retry_interval", "1s")
-	viper.SetDefault("olric.max_join_attempts", 30)
-	viper.SetDefault("olric.log_level", "WARN")
-	viper.SetDefault("olric.keep_alive_period", "30s")
-	viper.SetDefault("olric.request_timeout", "5s")
-	viper.SetDefault("olric.dmap_name", "deployment-locks")
+	viper.SetDefault("olric.replication_mode", store.DefaultReplicationMode)
+	viper.SetDefault("olric.replication_factor", store.DefaultReplicationFactor)
+	viper.SetDefault("olric.partition_count", store.DefaultPartitionCount)
+	viper.SetDefault("olric.backup_count", store.DefaultBackupCount)
+	viper.SetDefault("olric.backup_mode", store.DefaultBackupMode)
+	viper.SetDefault("olric.member_count_quorum", store.DefaultMemberCountQuorum)
+	viper.SetDefault("olric.join_retry_interval", store.DefaultJoinRetryInterval.String())
+	viper.SetDefault("olric.max_join_attempts", store.DefaultMaxJoinAttempts)
+	viper.SetDefault("olric.log_level", "") // Empty means use main log level
+	viper.SetDefault("olric.keep_alive_period", store.DefaultKeepAlivePeriod.String())
+	viper.SetDefault("olric.request_timeout", store.DefaultRequestTimeout.String())
+	viper.SetDefault("olric.dmap_name", store.DefaultDMapName)
 
 	// Enable environment variable support with automatic replacement
 	viper.SetEnvPrefix("LOCK")
@@ -136,8 +136,8 @@ func Load() (*Config, error) {
 
 	// Parse Olric configuration
 	olricCfg := &store.OlricConfig{
-		BindAddr:          viper.GetString("olric.bind_addr"),
-		BindPort:          viper.GetInt("olric.bind_port"),
+		BindAddr:          viper.GetString("olric.host"),
+		BindPort:          viper.GetInt("olric.port"),
 		JoinAddrs:         viper.GetStringSlice("olric.join_addrs"),
 		ReplicationMode:   viper.GetString("olric.replication_mode"),
 		ReplicationFactor: viper.GetInt("olric.replication_factor"),
@@ -146,8 +146,27 @@ func Load() (*Config, error) {
 		BackupMode:        viper.GetString("olric.backup_mode"),
 		MemberCountQuorum: viper.GetInt("olric.member_count_quorum"),
 		MaxJoinAttempts:   viper.GetInt("olric.max_join_attempts"),
-		LogLevel:          viper.GetString("olric.log_level"),
 		DMapName:          viper.GetString("olric.dmap_name"),
+	}
+
+	// Use main log level for Olric if not explicitly set
+	olricLogLevel := viper.GetString("olric.log_level")
+	if olricLogLevel == "" {
+		// Map service log level to Olric log level
+		switch cfg.LogLevel {
+		case "debug":
+			olricCfg.LogLevel = "DEBUG"
+		case "info":
+			olricCfg.LogLevel = "INFO"
+		case "warn":
+			olricCfg.LogLevel = "WARN"
+		case "error":
+			olricCfg.LogLevel = "ERROR"
+		default:
+			olricCfg.LogLevel = "WARN"
+		}
+	} else {
+		olricCfg.LogLevel = olricLogLevel
 	}
 
 	// Parse Olric time durations

@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"net"
 	"time"
 )
 
@@ -71,24 +72,55 @@ type OlricConfig struct {
 	DMapName string
 }
 
+const (
+	// DefaultBindAddr is the default bind address for Olric
+	DefaultBindAddr = "0.0.0.0"
+	// DefaultBindPort is the default bind port for Olric
+	DefaultBindPort = 3320
+	// DefaultReplicationMode is the default replication mode
+	DefaultReplicationMode = "async"
+	// DefaultReplicationFactor is the default replication factor for single-node
+	DefaultReplicationFactor = 1
+	// DefaultPartitionCount is the default number of partitions
+	DefaultPartitionCount = 271
+	// DefaultBackupCount is the default number of backups
+	DefaultBackupCount = 1
+	// DefaultBackupMode is the default backup mode
+	DefaultBackupMode = "async"
+	// DefaultMemberCountQuorum is the default member count quorum
+	DefaultMemberCountQuorum = 1
+	// DefaultJoinRetryInterval is the default join retry interval
+	DefaultJoinRetryInterval = 1 * time.Second
+	// DefaultMaxJoinAttempts is the default max join attempts
+	DefaultMaxJoinAttempts = 30
+	// DefaultLogLevel is the default log level for Olric
+	DefaultLogLevel = "WARN"
+	// DefaultKeepAlivePeriod is the default keep alive period
+	DefaultKeepAlivePeriod = 30 * time.Second
+	// DefaultRequestTimeout is the default request timeout
+	DefaultRequestTimeout = 5 * time.Second
+	// DefaultDMapName is the default DMap name
+	DefaultDMapName = "deployment-locks"
+)
+
 // NewDefaultOlricConfig returns an OlricConfig with sensible defaults.
 func NewDefaultOlricConfig() *OlricConfig {
 	return &OlricConfig{
-		BindAddr:          "0.0.0.0",
-		BindPort:          3320,
+		BindAddr:          DefaultBindAddr,
+		BindPort:          DefaultBindPort,
 		JoinAddrs:         []string{},
-		ReplicationMode:   "async",
-		ReplicationFactor: 1,
-		PartitionCount:    271,
-		BackupCount:       1,
-		BackupMode:        "async",
-		MemberCountQuorum: 1,
-		JoinRetryInterval: 1 * time.Second,
-		MaxJoinAttempts:   30,
-		LogLevel:          "WARN",
-		KeepAlivePeriod:   30 * time.Second,
-		RequestTimeout:    5 * time.Second,
-		DMapName:          "deployment-locks",
+		ReplicationMode:   DefaultReplicationMode,
+		ReplicationFactor: DefaultReplicationFactor,
+		PartitionCount:    DefaultPartitionCount,
+		BackupCount:       DefaultBackupCount,
+		BackupMode:        DefaultBackupMode,
+		MemberCountQuorum: DefaultMemberCountQuorum,
+		JoinRetryInterval: DefaultJoinRetryInterval,
+		MaxJoinAttempts:   DefaultMaxJoinAttempts,
+		LogLevel:          DefaultLogLevel,
+		KeepAlivePeriod:   DefaultKeepAlivePeriod,
+		RequestTimeout:    DefaultRequestTimeout,
+		DMapName:          DefaultDMapName,
 	}
 }
 
@@ -98,40 +130,45 @@ func (c *OlricConfig) Validate() error {
 		return fmt.Errorf("bind address cannot be empty")
 	}
 
+	// Validate bind address is a valid IPv4 or IPv6 address
+	if net.ParseIP(c.BindAddr) == nil && c.BindAddr != "0.0.0.0" && c.BindAddr != "::" {
+		return fmt.Errorf("bind address must be a valid IPv4 or IPv6 address, got: %s", c.BindAddr)
+	}
+
 	if c.BindPort < 1 || c.BindPort > 65535 {
-		return fmt.Errorf("invalid bind port: %d (must be 1-65535)", c.BindPort)
+		return fmt.Errorf("bind port must be between 1 and 65535, got: %d", c.BindPort)
 	}
 
 	if c.ReplicationMode != "sync" && c.ReplicationMode != "async" {
-		return fmt.Errorf("invalid replication mode: %s (must be sync or async)", c.ReplicationMode)
+		return fmt.Errorf("replication mode must be sync or async, got: %s", c.ReplicationMode)
 	}
 
 	if c.ReplicationFactor < 1 {
-		return fmt.Errorf("replication factor must be at least 1")
+		return fmt.Errorf("replication factor must be at least 1, got: %d", c.ReplicationFactor)
 	}
 
 	if c.PartitionCount < 1 {
-		return fmt.Errorf("partition count must be at least 1")
+		return fmt.Errorf("partition count must be at least 1, got: %d", c.PartitionCount)
 	}
 
 	if c.BackupCount < 0 {
-		return fmt.Errorf("backup count cannot be negative")
+		return fmt.Errorf("backup count must be zero or greater, got: %d", c.BackupCount)
 	}
 
 	if c.BackupMode != "sync" && c.BackupMode != "async" {
-		return fmt.Errorf("invalid backup mode: %s (must be sync or async)", c.BackupMode)
+		return fmt.Errorf("backup mode must be sync or async, got: %s", c.BackupMode)
 	}
 
 	if c.MemberCountQuorum < 1 {
-		return fmt.Errorf("member count quorum must be at least 1")
+		return fmt.Errorf("member count quorum must be at least 1, got: %d", c.MemberCountQuorum)
 	}
 
 	if c.JoinRetryInterval <= 0 {
-		return fmt.Errorf("join retry interval must be positive")
+		return fmt.Errorf("join retry interval must be positive, got: %v", c.JoinRetryInterval)
 	}
 
 	if c.MaxJoinAttempts < 1 {
-		return fmt.Errorf("max join attempts must be at least 1")
+		return fmt.Errorf("max join attempts must be at least 1, got: %d", c.MaxJoinAttempts)
 	}
 
 	validLogLevels := map[string]bool{

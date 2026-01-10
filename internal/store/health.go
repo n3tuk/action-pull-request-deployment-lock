@@ -59,20 +59,21 @@ func (c *ConnectionHealthChecker) Check(ctx context.Context) health.CheckResult 
 
 // ClusterHealthChecker checks if the Olric cluster is healthy.
 type ClusterHealthChecker struct {
-	logger              *zap.Logger
-	store               Store
-	expectedMemberCount int
-	singleNode          bool
+	logger     *zap.Logger
+	store      Store
+	quorum     int
+	singleNode bool
 }
 
 // NewClusterHealthChecker creates a new cluster health checker.
 // If singleNode is true, this check will always pass.
-func NewClusterHealthChecker(logger *zap.Logger, store Store, expectedMemberCount int, singleNode bool) *ClusterHealthChecker {
+// quorum is the minimum number of members required for the cluster to be healthy.
+func NewClusterHealthChecker(logger *zap.Logger, store Store, quorum int, singleNode bool) *ClusterHealthChecker {
 	return &ClusterHealthChecker{
-		logger:              logger,
-		store:               store,
-		expectedMemberCount: expectedMemberCount,
-		singleNode:          singleNode,
+		logger:     logger,
+		store:      store,
+		quorum:     quorum,
+		singleNode: singleNode,
 	}
 }
 
@@ -111,20 +112,20 @@ func (c *ClusterHealthChecker) Check(ctx context.Context) health.CheckResult {
 		return result
 	}
 
-	// Check if we have the expected number of members
-	if stats.ClusterMembers < c.expectedMemberCount {
+	// Check if we have quorum for safe reads and writes
+	if stats.ClusterMembers < c.quorum {
 		result.Status = health.StatusNotReady
-		result.Message = fmt.Sprintf("Cluster has %d members, expected %d",
-			stats.ClusterMembers, c.expectedMemberCount)
-		c.logger.Warn("Cluster member count below expected",
+		result.Message = fmt.Sprintf("Cluster has %d members, quorum requires %d",
+			stats.ClusterMembers, c.quorum)
+		c.logger.Warn("Cluster member count below quorum",
 			zap.Int("current", stats.ClusterMembers),
-			zap.Int("expected", c.expectedMemberCount),
+			zap.Int("quorum", c.quorum),
 		)
 		return result
 	}
 
 	result.Status = health.StatusOK
-	result.Message = fmt.Sprintf("Cluster healthy with %d members", stats.ClusterMembers)
+	result.Message = fmt.Sprintf("Cluster healthy with %d members (quorum: %d)", stats.ClusterMembers, c.quorum)
 	return result
 }
 

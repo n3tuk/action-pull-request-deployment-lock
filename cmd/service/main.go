@@ -15,6 +15,7 @@ import (
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/config"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/logger"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/server"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/store"
 )
 
 var (
@@ -67,21 +68,21 @@ func init() {
 	rootCmd.Flags().Duration("health-cache-duration", 10*time.Second, "Health check cache duration (e.g., 10s)")
 
 	// Olric configuration flags
-	rootCmd.Flags().String("olric-bind-addr", "0.0.0.0", "Olric bind address")
-	rootCmd.Flags().Int("olric-bind-port", 3320, "Olric bind port")
+	rootCmd.Flags().String("olric-host", store.DefaultBindAddr, "Olric bind host")
+	rootCmd.Flags().Int("olric-port", store.DefaultBindPort, "Olric bind port")
 	rootCmd.Flags().StringSlice("olric-join-addrs", []string{}, "Olric cluster join addresses")
-	rootCmd.Flags().String("olric-replication-mode", "async", "Olric replication mode (sync/async)")
-	rootCmd.Flags().Int("olric-replication-factor", 1, "Olric replication factor")
-	rootCmd.Flags().Int("olric-partition-count", 271, "Olric partition count")
-	rootCmd.Flags().Int("olric-backup-count", 1, "Olric backup count")
-	rootCmd.Flags().String("olric-backup-mode", "async", "Olric backup mode (sync/async)")
-	rootCmd.Flags().Int("olric-member-count-quorum", 1, "Olric member count quorum")
-	rootCmd.Flags().Duration("olric-join-retry-interval", 1*time.Second, "Olric join retry interval")
-	rootCmd.Flags().Int("olric-max-join-attempts", 30, "Olric max join attempts")
-	rootCmd.Flags().String("olric-log-level", "WARN", "Olric log level (DEBUG/INFO/WARN/ERROR)")
-	rootCmd.Flags().Duration("olric-keep-alive-period", 30*time.Second, "Olric keep alive period")
-	rootCmd.Flags().Duration("olric-request-timeout", 5*time.Second, "Olric request timeout")
-	rootCmd.Flags().String("olric-dmap-name", "deployment-locks", "Olric DMap name")
+	rootCmd.Flags().String("olric-replication-mode", store.DefaultReplicationMode, "Olric replication mode (sync/async)")
+	rootCmd.Flags().Int("olric-replication-factor", store.DefaultReplicationFactor, "Olric replication factor")
+	rootCmd.Flags().Int("olric-partition-count", int(store.DefaultPartitionCount), "Olric partition count")
+	rootCmd.Flags().Int("olric-backup-count", store.DefaultBackupCount, "Olric backup count")
+	rootCmd.Flags().String("olric-backup-mode", store.DefaultBackupMode, "Olric backup mode (sync/async)")
+	rootCmd.Flags().Int("olric-member-count-quorum", store.DefaultMemberCountQuorum, "Olric member count quorum")
+	rootCmd.Flags().Duration("olric-join-retry-interval", store.DefaultJoinRetryInterval, "Olric join retry interval")
+	rootCmd.Flags().Int("olric-max-join-attempts", store.DefaultMaxJoinAttempts, "Olric max join attempts")
+	rootCmd.Flags().String("olric-log-level", "", "Olric log level (DEBUG/INFO/WARN/ERROR, defaults to main log level)")
+	rootCmd.Flags().Duration("olric-keep-alive-period", store.DefaultKeepAlivePeriod, "Olric keep alive period")
+	rootCmd.Flags().Duration("olric-request-timeout", store.DefaultRequestTimeout, "Olric request timeout")
+	rootCmd.Flags().String("olric-dmap-name", store.DefaultDMapName, "Olric DMap name")
 
 	// Bind flags to viper
 	_ = viper.BindPFlag("api.port", rootCmd.Flags().Lookup("api-port"))
@@ -98,8 +99,8 @@ func init() {
 	_ = viper.BindPFlag("shutdown.timeout", rootCmd.Flags().Lookup("shutdown-timeout"))
 	_ = viper.BindPFlag("health.check_timeout", rootCmd.Flags().Lookup("health-check-timeout"))
 	_ = viper.BindPFlag("health.cache_duration", rootCmd.Flags().Lookup("health-cache-duration"))
-	_ = viper.BindPFlag("olric.bind_addr", rootCmd.Flags().Lookup("olric-bind-addr"))
-	_ = viper.BindPFlag("olric.bind_port", rootCmd.Flags().Lookup("olric-bind-port"))
+	_ = viper.BindPFlag("olric.host", rootCmd.Flags().Lookup("olric-host"))
+	_ = viper.BindPFlag("olric.port", rootCmd.Flags().Lookup("olric-port"))
 	_ = viper.BindPFlag("olric.join_addrs", rootCmd.Flags().Lookup("olric-join-addrs"))
 	_ = viper.BindPFlag("olric.replication_mode", rootCmd.Flags().Lookup("olric-replication-mode"))
 	_ = viper.BindPFlag("olric.replication_factor", rootCmd.Flags().Lookup("olric-replication-factor"))

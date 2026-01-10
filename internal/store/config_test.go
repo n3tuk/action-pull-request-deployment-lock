@@ -97,7 +97,7 @@ func TestOlricConfig_Validate(t *testing.T) {
 				DMapName:          "test",
 			},
 			wantErr: true,
-			errMsg:  "invalid bind port",
+			errMsg:  "bind port must be between",
 		},
 		{
 			name: "invalid port - too high",
@@ -118,7 +118,7 @@ func TestOlricConfig_Validate(t *testing.T) {
 				DMapName:          "test",
 			},
 			wantErr: true,
-			errMsg:  "invalid bind port",
+			errMsg:  "bind port must be between",
 		},
 		{
 			name: "invalid replication mode",
@@ -139,7 +139,7 @@ func TestOlricConfig_Validate(t *testing.T) {
 				DMapName:          "test",
 			},
 			wantErr: true,
-			errMsg:  "invalid replication mode",
+			errMsg:  "replication mode must be",
 		},
 		{
 			name: "invalid replication factor",

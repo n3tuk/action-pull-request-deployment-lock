@@ -293,25 +293,28 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		}
 	}()
 
-	// Shutdown probe server third
+	// Shutdown Olric store third
+	// Do this before probe server so Kubernetes can still check health
+	// while Olric is gracefully leaving the cluster
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		s.logger.Info("Shutting down probe server")
-		if err := s.probeServer.Shutdown(ctx); err != nil {
-			errChan <- fmt.Errorf("probe server shutdown error: %w", err)
+		if s.store != nil {
+			s.logger.Info("Shutting down Olric store")
+			if err := s.store.Close(ctx); err != nil {
+				errChan <- fmt.Errorf("olric store shutdown error: %w", err)
+			}
 		}
 	}()
 
-	// Wait for all HTTP servers to shut down
+	// Wait for Olric and other servers to shut down
 	wg.Wait()
 
-	// Now shutdown Olric store last
-	if s.store != nil {
-		s.logger.Info("Shutting down Olric store")
-		if err := s.store.Close(ctx); err != nil {
-			errChan <- fmt.Errorf("olric store shutdown error: %w", err)
-		}
+	// Shutdown probe server last
+	// This ensures Kubernetes can monitor health while Olric disconnects from cluster
+	s.logger.Info("Shutting down probe server")
+	if err := s.probeServer.Shutdown(ctx); err != nil {
+		errChan <- fmt.Errorf("probe server shutdown error: %w", err)
 	}
 
 	close(errChan)
