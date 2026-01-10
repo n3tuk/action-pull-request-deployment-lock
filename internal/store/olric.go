@@ -132,6 +132,27 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 	c.MaxJoinAttempts = s.config.MaxJoinAttempts
 	c.BootstrapTimeout = 5 * time.Second // Reduce bootstrap timeout for faster startup
 
+	// Configure memberlist for cluster discovery
+	mc, err := config.NewMemberlistConfig("local")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create memberlist config: %w", err)
+	}
+	
+	// Set bind port for memberlist (0 means random available port)
+	if s.config.MemberlistBindPort != 0 {
+		mc.BindPort = s.config.MemberlistBindPort
+	}
+	
+	// Set advertise address and port for NAT traversal and multi-instance testing
+	if s.config.AdvertiseAddr != "" {
+		mc.AdvertiseAddr = s.config.AdvertiseAddr
+	}
+	if s.config.AdvertisePort != 0 {
+		mc.AdvertisePort = s.config.AdvertisePort
+	}
+	
+	c.MemberlistConfig = mc
+
 	// Set replication mode
 	if s.config.ReplicationMode == "sync" {
 		c.ReplicationMode = config.SyncReplicationMode

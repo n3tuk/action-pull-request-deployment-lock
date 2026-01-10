@@ -68,6 +68,9 @@ func Load() (*Config, error) {
 	// Olric defaults - use constants from store package
 	viper.SetDefault("olric.host", store.DefaultBindAddr)
 	viper.SetDefault("olric.port", store.DefaultBindPort)
+	viper.SetDefault("olric.advertise_addr", store.DefaultAdvertiseAddr)
+	viper.SetDefault("olric.advertise_port", store.DefaultAdvertisePort)
+	viper.SetDefault("olric.memberlist_bind_port", store.DefaultMemberlistBindPort)
 	viper.SetDefault("olric.join_addrs", []string{})
 	viper.SetDefault("olric.replication_mode", store.DefaultReplicationMode)
 	viper.SetDefault("olric.replication_factor", store.DefaultReplicationFactor)
@@ -138,6 +141,9 @@ func Load() (*Config, error) {
 	olricCfg := &store.OlricConfig{
 		BindAddr:          viper.GetString("olric.host"),
 		BindPort:          viper.GetInt("olric.port"),
+		AdvertiseAddr:     viper.GetString("olric.advertise_addr"),
+		AdvertisePort:     viper.GetInt("olric.advertise_port"),
+		MemberlistBindPort: viper.GetInt("olric.memberlist_bind_port"),
 		JoinAddrs:         viper.GetStringSlice("olric.join_addrs"),
 		ReplicationMode:   viper.GetString("olric.replication_mode"),
 		ReplicationFactor: viper.GetInt("olric.replication_factor"),

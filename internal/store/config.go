@@ -16,6 +16,21 @@ type OlricConfig struct {
 	// Default: 3320
 	BindPort int
 
+	// AdvertiseAddr is the address to advertise to other cluster members.
+	// Used for NAT traversal. If empty, uses BindAddr.
+	// Default: "" (uses BindAddr)
+	AdvertiseAddr string
+
+	// AdvertisePort is the port to advertise to other cluster members.
+	// Used for NAT traversal and testing multiple instances on same host.
+	// If 0, uses BindPort.
+	// Default: 0 (uses BindPort)
+	AdvertisePort int
+
+	// MemberlistBindPort is the port for memberlist gossip protocol.
+	// Default: 0 (uses random available port)
+	MemberlistBindPort int
+
 	// JoinAddrs is a list of addresses to join for cluster formation.
 	// If empty, the node will start in single-node mode.
 	// Example: ["node1:3320", "node2:3320"]
@@ -77,6 +92,12 @@ const (
 	DefaultBindAddr = "0.0.0.0"
 	// DefaultBindPort is the default bind port for Olric
 	DefaultBindPort = 3320
+	// DefaultAdvertiseAddr is the default advertise address (empty means use BindAddr)
+	DefaultAdvertiseAddr = ""
+	// DefaultAdvertisePort is the default advertise port (0 means use BindPort)
+	DefaultAdvertisePort = 0
+	// DefaultMemberlistBindPort is the default memberlist bind port (0 means random)
+	DefaultMemberlistBindPort = 0
 	// DefaultReplicationMode is the default replication mode
 	DefaultReplicationMode = "async"
 	// DefaultReplicationFactor is the default replication factor for single-node
@@ -108,6 +129,9 @@ func NewDefaultOlricConfig() *OlricConfig {
 	return &OlricConfig{
 		BindAddr:          DefaultBindAddr,
 		BindPort:          DefaultBindPort,
+		AdvertiseAddr:     DefaultAdvertiseAddr,
+		AdvertisePort:     DefaultAdvertisePort,
+		MemberlistBindPort: DefaultMemberlistBindPort,
 		JoinAddrs:         []string{},
 		ReplicationMode:   DefaultReplicationMode,
 		ReplicationFactor: DefaultReplicationFactor,
@@ -137,6 +161,23 @@ func (c *OlricConfig) Validate() error {
 
 	if c.BindPort < 1 || c.BindPort > 65535 {
 		return fmt.Errorf("bind port must be between 1 and 65535, got: %d", c.BindPort)
+	}
+
+	// Validate advertise address if provided
+	if c.AdvertiseAddr != "" {
+		if net.ParseIP(c.AdvertiseAddr) == nil && c.AdvertiseAddr != "0.0.0.0" && c.AdvertiseAddr != "::" {
+			return fmt.Errorf("advertise address must be a valid IPv4 or IPv6 address, got: %s", c.AdvertiseAddr)
+		}
+	}
+
+	// Validate advertise port if provided
+	if c.AdvertisePort != 0 && (c.AdvertisePort < 1 || c.AdvertisePort > 65535) {
+		return fmt.Errorf("advertise port must be between 1 and 65535, got: %d", c.AdvertisePort)
+	}
+
+	// Validate memberlist bind port if provided
+	if c.MemberlistBindPort != 0 && (c.MemberlistBindPort < 1 || c.MemberlistBindPort > 65535) {
+		return fmt.Errorf("memberlist bind port must be between 1 and 65535, got: %d", c.MemberlistBindPort)
 	}
 
 	if c.ReplicationMode != "sync" && c.ReplicationMode != "async" {
