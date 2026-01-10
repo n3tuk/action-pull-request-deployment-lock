@@ -102,6 +102,12 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 		zap.Int("cluster_members", len(members)),
 	)
 
+	// Eagerly create the DMap to avoid lazy initialization issues with health checks
+	_, err = store.getDMap(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DMap during initialization: %w", err)
+	}
+
 	return store, nil
 }
 
