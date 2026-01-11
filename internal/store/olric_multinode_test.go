@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -27,7 +28,9 @@ func TestOlricStore_MultiNode(t *testing.T) {
 	
 	// This test requires specific networking setup and can be flaky on localhost
 	// Skip if SKIP_MULTINODE_TEST environment variable is set
-	t.Skip("Multi-node test skipped - requires specific network configuration for localhost clustering")
+	if os.Getenv("SKIP_MULTINODE_TEST") != "" {
+		t.Skip("Multi-node test skipped - SKIP_MULTINODE_TEST environment variable is set")
+	}
 
 	logger, _ := zap.NewDevelopment()
 
