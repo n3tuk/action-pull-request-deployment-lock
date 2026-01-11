@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"sync"
 	"time"
 
@@ -280,7 +279,9 @@ func (s *OlricStore) Get(ctx context.Context, key string) (interface{}, error) {
 		return nil, err
 	}
 	
-	var result interface{}
+	// Scan into a string since that's what we're storing
+	// Olric requires concrete types for unmarshaling
+	var result string
 	if err := resp.Scan(&result); err != nil {
 		return nil, err
 	}
@@ -322,21 +323,21 @@ func (s *OlricStore) Exists(ctx context.Context, key string) (bool, error) {
 
 // Ping verifies connectivity to the store.
 func (s *OlricStore) Ping(ctx context.Context) error {
-	// Use Olric's built-in PING command to verify connectivity
+	// For embedded Olric, verify health by checking if we can get members
+	// This doesn't require network connectivity like the Ping command
 	if s.client == nil {
 		return fmt.Errorf("olric client is nil")
 	}
 
-	// Ping the local node (use bind address)
-	addr := net.JoinHostPort(s.config.BindAddr, fmt.Sprintf("%d", s.config.BindPort))
-	
 	// Create a context with 2 second timeout
 	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	
-	_, err := s.client.Ping(pingCtx, addr, "")
+	// Use Members() call as a health check for embedded client
+	// This verifies the Olric instance is running and responsive
+	_, err := s.client.Members(pingCtx)
 	if err != nil {
-		return fmt.Errorf("failed to ping olric: %w", err)
+		return fmt.Errorf("failed to get olric members: %w", err)
 	}
 
 	return nil
