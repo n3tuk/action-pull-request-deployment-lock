@@ -54,20 +54,20 @@ func TestOlricStore_MultiNode(t *testing.T) {
 		configs[i].MaxJoinAttempts = 20
 	}
 
-	// Set join addresses - use the actual Olric bind ports for joining
-	olricAddrs := []string{
-		fmt.Sprintf("127.0.0.1:%d", basePort),     // node 0
-		fmt.Sprintf("127.0.0.1:%d", basePort+1),   // node 1
-		fmt.Sprintf("127.0.0.1:%d", basePort+2),   // node 2
+	// Set join addresses - use memberlist ports for cluster discovery
+	memberlistAddrs := []string{
+		fmt.Sprintf("127.0.0.1:%d", baseMemberlistPort),     // node 0
+		fmt.Sprintf("127.0.0.1:%d", baseMemberlistPort+1),   // node 1
+		fmt.Sprintf("127.0.0.1:%d", baseMemberlistPort+2),   // node 2
 	}
 	
-	// Each node joins to the others using Olric bind ports
+	// Each node joins to the others using memberlist ports
 	for i := 0; i < 3; i++ {
 		// Join to all other nodes (exclude self)
 		var peers []string
 		for j := 0; j < 3; j++ {
 			if i != j {
-				peers = append(peers, olricAddrs[j])
+				peers = append(peers, memberlistAddrs[j])
 			}
 		}
 		configs[i].JoinAddrs = peers
