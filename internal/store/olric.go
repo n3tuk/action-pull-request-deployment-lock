@@ -278,6 +278,18 @@ func (s *OlricStore) Get(ctx context.Context, key string) (interface{}, error) {
 	return result, nil
 }
 
+// isKeyNotFoundError checks if an error indicates a key was not found.
+// Olric returns errors with "key not found" message for missing keys.
+// This helper provides a centralized check that's easier to maintain if
+// Olric's error handling changes in future versions.
+func isKeyNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Check the error message as Olric doesn't export a specific error constant
+	return err.Error() == "key not found"
+}
+
 // Delete removes a value for the given key.
 func (s *OlricStore) Delete(ctx context.Context, key string) error {
 	dmap, err := s.getDMap(ctx)
@@ -285,10 +297,10 @@ func (s *OlricStore) Delete(ctx context.Context, key string) error {
 		return err
 	}
 	
-	// Olric returns olric.ErrKeyNotFound if the key doesn't exist, which is fine
+	// Olric returns "key not found" error if the key doesn't exist, which is fine
 	// We want Delete to be idempotent
 	_, err = dmap.Delete(ctx, key)
-	if err != nil && err.Error() != "key not found" {
+	if err != nil && !isKeyNotFoundError(err) {
 		return err
 	}
 	return nil
@@ -303,7 +315,7 @@ func (s *OlricStore) Exists(ctx context.Context, key string) (bool, error) {
 	
 	_, err = dmap.Get(ctx, key)
 	if err != nil {
-		if err.Error() == "key not found" {
+		if isKeyNotFoundError(err) {
 			return false, nil
 		}
 		return false, err
@@ -362,11 +374,13 @@ func (s *OlricStore) Stats(ctx context.Context) (*StoreStats, error) {
 		}
 	}
 	
-	// For now, set basic stats
-	// Olric v0.7+ uses different stats structure
-	_ = rtStats // Will use when we understand the stats structure better
-	stats.TotalKeys = 0 // Will be populated when we scan or have better stats API
-	stats.MemoryUsage = 0 // Will be populated from runtime stats
+	// For now, set basic stats from cluster information.
+	// TotalKeys and MemoryUsage are not currently available from Olric v0.7+ stats API.
+	// These fields will remain at their default zero values, which callers should
+	// treat as "not available" per the StoreStats documentation.
+	_ = rtStats // Reserved for future use when detailed stats parsing is implemented
+	stats.TotalKeys = 0
+	stats.MemoryUsage = 0
 
 	return stats, nil
 }

@@ -155,7 +155,8 @@ func (c *OlricConfig) Validate() error {
 	}
 
 	// Validate bind address is a valid IPv4 or IPv6 address
-	if net.ParseIP(c.BindAddr) == nil && c.BindAddr != "0.0.0.0" && c.BindAddr != "::" {
+	// net.ParseIP handles special cases like "0.0.0.0" and "::" correctly
+	if net.ParseIP(c.BindAddr) == nil {
 		return fmt.Errorf("bind address must be a valid IPv4 or IPv6 address, got: %s", c.BindAddr)
 	}
 
@@ -164,8 +165,9 @@ func (c *OlricConfig) Validate() error {
 	}
 
 	// Validate advertise address if provided
+	// net.ParseIP handles special cases like "0.0.0.0" and "::" correctly
 	if c.AdvertiseAddr != "" {
-		if net.ParseIP(c.AdvertiseAddr) == nil && c.AdvertiseAddr != "0.0.0.0" && c.AdvertiseAddr != "::" {
+		if net.ParseIP(c.AdvertiseAddr) == nil {
 			return fmt.Errorf("advertise address must be a valid IPv4 or IPv6 address, got: %s", c.AdvertiseAddr)
 		}
 	}

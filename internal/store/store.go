@@ -59,9 +59,13 @@ type StoreStats struct {
 	ReplicationFactor int
 
 	// TotalKeys is the total number of keys stored across all partitions.
+	// Note: This field may be 0 if the backend doesn't support key counting
+	// or if detailed statistics are not available.
 	TotalKeys int64
 
 	// MemoryUsage is the total memory used by the store in bytes.
 	// This includes all stored data and metadata.
+	// Note: This field may be 0 if the backend doesn't expose memory usage statistics
+	// or if detailed statistics are not available.
 	MemoryUsage int64
 }
