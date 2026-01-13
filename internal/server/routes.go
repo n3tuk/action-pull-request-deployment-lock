@@ -7,14 +7,22 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/handlers"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
 	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/storage"
 )
 
 // setupAPIRoutes configures the API server routes.
-func setupAPIRoutes(r *chi.Mux, logger *zap.Logger) {
+func setupAPIRoutes(r *chi.Mux, logger *zap.Logger, lockManager storage.LockManager, m *metrics.Metrics) {
 	r.Get("/ping", handlePing(logger))
+
+	// Lock endpoints
+	lockHandlers := handlers.NewLockHandlers(lockManager, logger, m)
+	r.Post("/lock", lockHandlers.HandleLock)
+	r.Post("/unlock", lockHandlers.HandleUnlock)
+	r.Get("/lock/{project}", lockHandlers.HandleGetLock)
 }
 
 // setupProbeRoutes configures the probe server routes with health checks.

@@ -32,6 +32,9 @@ type Metrics struct {
 	HealthCheckLastSuccessTimestamp *prometheus.GaugeVec
 	HealthCheckFailuresTotal        *prometheus.CounterVec
 
+	// Lock operation metrics
+	LockOperationsTotal *prometheus.CounterVec
+
 	registry *prometheus.Registry
 }
 
@@ -179,6 +182,16 @@ func NewMetrics(namespace string, buildInfo map[string]string) *Metrics {
 		[]string{"check_name"},
 	)
 
+	// Lock operation metrics
+	m.LockOperationsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      "lock_operations_total",
+			Help:      "Total number of lock operations by operation type and status",
+		},
+		[]string{"operation", "status"},
+	)
+
 	// Register all metrics
 	m.register()
 
@@ -213,6 +226,7 @@ func (m *Metrics) register() {
 		m.HealthCheckDurationSeconds,
 		m.HealthCheckLastSuccessTimestamp,
 		m.HealthCheckFailuresTotal,
+		m.LockOperationsTotal,
 	)
 
 	// Register Go collectors

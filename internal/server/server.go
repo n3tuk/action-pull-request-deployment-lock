@@ -18,24 +18,26 @@ import (
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/health"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
 	internalMiddleware "github.com/n3tuk/action-pull-request-deployment-lock/internal/middleware"
+	"github.com/n3tuk/action-pull-request-deployment-lock/internal/storage"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/store"
 )
 
 // Server manages the three HTTP servers (API, Probe, Metrics).
 type Server struct {
-	cfg           *config.Config
-	logger        *zap.Logger
-	apiServer     *http.Server
-	probeServer   *http.Server
-	metricsServer *http.Server
-	startTime     time.Time
-	shutdownChan  chan struct{}
-	metrics       *metrics.Metrics
-	healthManager *health.Manager
-	runtimeTicker *time.Ticker
-	store         store.Store
-	storeMetrics  *store.OlricMetrics
+	cfg              *config.Config
+	logger           *zap.Logger
+	apiServer        *http.Server
+	probeServer      *http.Server
+	metricsServer    *http.Server
+	startTime        time.Time
+	shutdownChan     chan struct{}
+	metrics          *metrics.Metrics
+	healthManager    *health.Manager
+	runtimeTicker    *time.Ticker
+	store            store.Store
+	storeMetrics     *store.OlricMetrics
 	metricsCollector *store.OlricMetricsCollector
+	lockManager      storage.LockManager
 }
 
 // New creates a new Server instance.
@@ -91,6 +93,9 @@ func New(cfg *config.Config, logger *zap.Logger, buildInfo map[string]string) (*
 		cfg.Olric.IsSingleNode(),
 	))
 	s.healthManager.RegisterChecker(store.NewStorageHealthChecker(logger, s.store))
+
+	// Initialize lock manager
+	s.lockManager = storage.NewOlricLockManager(s.store, logger)
 
 	// Setup servers
 	if err := s.setupServers(); err != nil {
@@ -153,7 +158,7 @@ func (s *Server) setupAPIRouter() *chi.Mux {
 	r.Use(middleware.Recoverer)
 
 	// Routes
-	setupAPIRoutes(r, s.logger)
+	setupAPIRoutes(r, s.logger, s.lockManager, s.metrics)
 
 	return r
 }
