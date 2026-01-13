@@ -206,6 +206,28 @@ func TestOlricConfig_Validate(t *testing.T) {
 			errMsg:  "replication factor should be at least 2 in multi-node mode",
 		},
 		{
+			name: "quorum greater than 1 requires join addresses",
+			cfg: &OlricConfig{
+				BindAddr:          "0.0.0.0",
+				BindPort:          3320,
+				JoinAddrs:         []string{}, // No join addresses
+				ReplicationMode:   "async",
+				ReplicationFactor: 1,
+				PartitionCount:    271,
+				BackupCount:       1,
+				BackupMode:        "async",
+				MemberCountQuorum: 2, // Quorum > 1 but no join addresses
+				JoinRetryInterval: 1 * time.Second,
+				MaxJoinAttempts:   30,
+				LogLevel:          "WARN",
+				KeepAlivePeriod:   30 * time.Second,
+				RequestTimeout:    5 * time.Second,
+				DMapName:          "test",
+			},
+			wantErr: true,
+			errMsg:  "member count quorum is 2 but no join addresses provided",
+		},
+		{
 			name: "valid multi-node config",
 			cfg: &OlricConfig{
 				BindAddr:          "0.0.0.0",

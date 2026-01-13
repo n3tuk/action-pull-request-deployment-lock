@@ -18,6 +18,7 @@ func TestOlricStore_SingleNode(t *testing.T) {
 
 	// Create a single-node configuration
 	cfg := NewDefaultOlricConfig()
+	cfg.BindAddr = "127.0.0.1" // Use localhost for testing
 	cfg.BindPort = 13320 // Use a different port for testing
 	cfg.LogLevel = "ERROR" // Reduce log noise in tests
 

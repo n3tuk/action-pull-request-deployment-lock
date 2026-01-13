@@ -18,6 +18,7 @@ func TestConnectionHealthChecker(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
 	cfg := NewDefaultOlricConfig()
+	cfg.BindAddr = "127.0.0.1" // Use localhost for testing
 	cfg.BindPort = 13324
 	cfg.LogLevel = "ERROR"
 
@@ -54,6 +55,7 @@ func TestClusterHealthChecker_SingleNode(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
 	cfg := NewDefaultOlricConfig()
+	cfg.BindAddr = "127.0.0.1" // Use localhost for testing
 	cfg.BindPort = 13325
 	cfg.LogLevel = "ERROR"
 
@@ -91,6 +93,7 @@ func TestClusterHealthChecker_MultiNode(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
 	cfg := NewDefaultOlricConfig()
+	cfg.BindAddr = "127.0.0.1" // Use localhost for testing
 	cfg.BindPort = 13326
 	cfg.LogLevel = "ERROR"
 
@@ -133,6 +136,7 @@ func TestStorageHealthChecker(t *testing.T) {
 	logger, _ := zap.NewDevelopment()
 
 	cfg := NewDefaultOlricConfig()
+	cfg.BindAddr = "127.0.0.1" // Use localhost for testing
 	cfg.BindPort = 13327
 	cfg.LogLevel = "ERROR"
 

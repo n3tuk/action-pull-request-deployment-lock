@@ -3,12 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/hashicorp/logutils"
 	"github.com/olric-data/olric"
 	"github.com/olric-data/olric/config"
 	"go.uber.org/zap"
@@ -112,16 +109,6 @@ func NewOlricStore(ctx context.Context, cfg *OlricConfig, logger *zap.Logger) (*
 
 // createOlricConfig creates an Olric configuration from the OlricConfig.
 func (s *OlricStore) createOlricConfig() (*config.Config, error) {
-	// Create Olric logger with appropriate level
-	// Route all Olric logs through our own logger to maintain consistent logging
-	logFilter := &logutils.LevelFilter{
-		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
-		MinLevel: logutils.LogLevel(s.config.LogLevel),
-		Writer:   io.Discard, // Discard Olric logs, use our own structured logging
-	}
-
-	olricLogger := log.New(logFilter, "", log.LstdFlags)
-
 	c := config.New("local")  // Use "local" for single-node, less network overhead
 	c.BindAddr = s.config.BindAddr
 	c.BindPort = s.config.BindPort
@@ -132,7 +119,7 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 	c.WriteQuorum = s.config.MemberCountQuorum // Match write quorum to member count quorum for safety
 	c.MemberCountQuorum = int32(s.config.MemberCountQuorum)
 	c.LogLevel = s.config.LogLevel
-	c.Logger = olricLogger
+	c.Logger = zap.NewStdLog(s.logger) // Route Olric logs through our configured logger
 	c.JoinRetryInterval = s.config.JoinRetryInterval
 	c.MaxJoinAttempts = s.config.MaxJoinAttempts
 	c.BootstrapTimeout = 5 * time.Second // Reduce bootstrap timeout for faster startup
@@ -143,7 +130,10 @@ func (s *OlricStore) createOlricConfig() (*config.Config, error) {
 		return nil, fmt.Errorf("failed to create memberlist config: %w", err)
 	}
 	
-	// Set bind port for memberlist (0 means random available port)
+	// Set bind address for memberlist to match Olric bind address
+	mc.BindAddr = s.config.BindAddr
+	
+	// Set bind port for memberlist (0 defaults to 7946)
 	if s.config.MemberlistBindPort != 0 {
 		mc.BindPort = s.config.MemberlistBindPort
 	}

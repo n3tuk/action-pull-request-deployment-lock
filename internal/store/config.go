@@ -28,7 +28,7 @@ type OlricConfig struct {
 	AdvertisePort int
 
 	// MemberlistBindPort is the port for memberlist gossip protocol.
-	// Default: 0 (uses random available port)
+	// Default: 0 (defaults to 7946)
 	MemberlistBindPort int
 
 	// JoinAddrs is a list of addresses to join for cluster formation.
@@ -96,7 +96,7 @@ const (
 	DefaultAdvertiseAddr = ""
 	// DefaultAdvertisePort is the default advertise port (0 means use BindPort)
 	DefaultAdvertisePort = 0
-	// DefaultMemberlistBindPort is the default memberlist bind port (0 means random)
+	// DefaultMemberlistBindPort is the default memberlist bind port (0 defaults to 7946)
 	DefaultMemberlistBindPort = 0
 	// DefaultReplicationMode is the default replication mode
 	DefaultReplicationMode = "async"
@@ -235,14 +235,13 @@ func (c *OlricConfig) Validate() error {
 	}
 
 	// Validate cluster configuration
-	if len(c.JoinAddrs) > 0 {
-		// Multi-node mode
-		if c.MemberCountQuorum > len(c.JoinAddrs)+1 {
-			return fmt.Errorf("member count quorum (%d) cannot be greater than number of join addresses + 1 (%d)",
-				c.MemberCountQuorum, len(c.JoinAddrs)+1)
-		}
+	// If quorum is greater than 1, we need at least one join address to find other nodes
+	if c.MemberCountQuorum > 1 && len(c.JoinAddrs) == 0 {
+		return fmt.Errorf("member count quorum is %d but no join addresses provided; need at least one join address to form a cluster", c.MemberCountQuorum)
+	}
 
-		// In multi-node mode, replication factor should be at least 2
+	if len(c.JoinAddrs) > 0 {
+		// Multi-node mode - replication factor should be at least 2
 		if c.ReplicationFactor < 2 {
 			return fmt.Errorf("replication factor should be at least 2 in multi-node mode (current: %d)", c.ReplicationFactor)
 		}
