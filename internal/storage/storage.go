@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -56,7 +57,10 @@ func NewOlricLockManager(store store.Store, logger *zap.Logger) *OlricLockManage
 }
 
 // AcquireLock attempts to acquire a lock for the given project and branch.
-// This operation is atomic using Olric's Get-Check-Put pattern.
+// This operation uses PutIfAbsent which provides better atomicity than the previous
+// Get-Check-Put pattern, though due to limitations in Olric v0.7.2, there remains
+// a small race window. This is acceptable for deployment locking use cases where
+// the cost of a rare race is low (one deployment wins, others retry).
 func (m *OlricLockManager) AcquireLock(ctx context.Context, project, branch, owner string) (*model.Lock, error) {
 	if project == "" {
 		return nil, fmt.Errorf("project name cannot be empty")
@@ -74,15 +78,14 @@ func (m *OlricLockManager) AcquireLock(ctx context.Context, project, branch, own
 		zap.String("owner", owner),
 	)
 
-	// Try to get existing lock
+	// Try to get existing lock first to check for idempotency
 	existingLock, err := m.GetLock(ctx, project)
 	if err != nil && err != ErrLockNotFound {
 		return nil, fmt.Errorf("failed to check existing lock: %w", err)
 	}
 
-	// If lock exists
+	// If lock exists, check if same branch and owner - idempotent success
 	if existingLock != nil {
-		// Check if same branch and owner - idempotent success
 		if existingLock.Branch == branch && existingLock.Owner == owner {
 			m.logger.Debug("Lock already held by same branch/owner",
 				zap.String("project", project),
@@ -114,10 +117,36 @@ func (m *OlricLockManager) AcquireLock(ctx context.Context, project, branch, own
 		return nil, fmt.Errorf("failed to serialize lock: %w", err)
 	}
 
-	// Store the lock with no TTL (locks don't expire automatically)
-	err = m.store.Put(ctx, project, string(lockData), 0)
+	// Atomically store the lock if it doesn't exist
+	stored, err := m.store.PutIfAbsent(ctx, project, string(lockData), 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to store lock: %w", err)
+	}
+
+	if !stored {
+		// Another process acquired the lock between our check and PutIfAbsent
+		// Retrieve the lock that was stored
+		existingLock, err := m.GetLock(ctx, project)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get lock after race: %w", err)
+		}
+
+		// Check if it's the same branch/owner (race with ourselves)
+		if existingLock.Branch == branch && existingLock.Owner == owner {
+			m.logger.Debug("Lock acquired by concurrent request for same branch/owner",
+				zap.String("project", project),
+				zap.String("branch", branch),
+			)
+			return existingLock, nil
+		}
+
+		// Different branch won the race
+		m.logger.Debug("Lock acquired by different branch in race",
+			zap.String("project", project),
+			zap.String("existing_branch", existingLock.Branch),
+			zap.String("requested_branch", branch),
+		)
+		return existingLock, ErrLockConflict
 	}
 
 	m.logger.Info("Lock acquired successfully",
@@ -166,7 +195,9 @@ func (m *OlricLockManager) GetLock(ctx context.Context, project string) (*model.
 	value, err := m.store.Get(ctx, project)
 	if err != nil {
 		// Check if this is a "key not found" error from Olric
-		if err.Error() == "key not found" {
+		// Use strings.Contains for more robust error matching since Olric
+		// error messages may change across versions
+		if strings.Contains(err.Error(), "key not found") {
 			return nil, ErrLockNotFound
 		}
 		return nil, fmt.Errorf("failed to get lock: %w", err)

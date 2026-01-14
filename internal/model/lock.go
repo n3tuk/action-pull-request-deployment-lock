@@ -42,7 +42,11 @@ type UnlockRequest struct {
 // LockResponse represents the response from lock/unlock operations.
 type LockResponse struct {
 	// Status indicates the overall status of the operation.
-	// Values: "locked", "unlocked", "error"
+	// For successful operations this is:
+	//   - "locked"   when a lock is currently held
+	//   - "unlocked" when no active lock exists
+	// For error responses produced by helper functions, this is:
+	//   - "error"
 	Status string `json:"status"`
 
 	// Message provides additional context about the operation result.

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -11,6 +13,14 @@ import (
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/metrics"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/model"
 	"github.com/n3tuk/action-pull-request-deployment-lock/internal/storage"
+)
+
+// validNamePattern defines the allowed pattern for project and branch names.
+// Allows alphanumeric characters, hyphens, underscores, and forward slashes.
+var validNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_/-]+$`)
+
+const (
+	maxNameLength = 256 // Maximum length for project and branch names
 )
 
 // LockHandlers provides HTTP handlers for lock operations.
@@ -29,6 +39,27 @@ func NewLockHandlers(lockManager storage.LockManager, logger *zap.Logger, metric
 	}
 }
 
+// validateName validates and sanitizes project/branch names.
+// Returns an error if the name is invalid.
+func validateName(name, fieldName string) error {
+	if name == "" {
+		return errors.New(fieldName + " is required")
+	}
+	
+	// Trim whitespace
+	name = strings.TrimSpace(name)
+	
+	if len(name) > maxNameLength {
+		return errors.New(fieldName + " exceeds maximum length")
+	}
+	
+	if !validNamePattern.MatchString(name) {
+		return errors.New(fieldName + " contains invalid characters")
+	}
+	
+	return nil
+}
+
 // HandleLock handles POST /lock requests to acquire a deployment lock.
 // Returns:
 //   - 200 OK: Lock acquired successfully or already held by same branch
@@ -44,15 +75,18 @@ func (h *LockHandlers) HandleLock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
-	if req.Project == "" {
+	// Validate and sanitize request
+	req.Project = strings.TrimSpace(req.Project)
+	req.Branch = strings.TrimSpace(req.Branch)
+	
+	if err := validateName(req.Project, "Project name"); err != nil {
 		h.recordMetric("lock", "failure")
-		h.respondError(w, http.StatusBadRequest, "Project name is required")
+		h.respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if req.Branch == "" {
+	if err := validateName(req.Branch, "Branch name"); err != nil {
 		h.recordMetric("lock", "failure")
-		h.respondError(w, http.StatusBadRequest, "Branch name is required")
+		h.respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -96,10 +130,18 @@ func (h *LockHandlers) HandleUnlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
-	if req.Project == "" {
+	// Validate and sanitize request
+	req.Project = strings.TrimSpace(req.Project)
+	req.Branch = strings.TrimSpace(req.Branch)
+	
+	if err := validateName(req.Project, "Project name"); err != nil {
 		h.recordMetric("unlock", "failure")
-		h.respondError(w, http.StatusBadRequest, "Project name is required")
+		h.respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := validateName(req.Branch, "Branch name"); err != nil {
+		h.recordMetric("unlock", "failure")
+		h.respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -130,8 +172,11 @@ func (h *LockHandlers) HandleUnlock(w http.ResponseWriter, r *http.Request) {
 //   - 500 Internal Server Error: Storage or internal error
 func (h *LockHandlers) HandleGetLock(w http.ResponseWriter, r *http.Request) {
 	project := chi.URLParam(r, "project")
-	if project == "" {
-		h.respondError(w, http.StatusBadRequest, "Project name is required")
+	project = strings.TrimSpace(project)
+	
+	if err := validateName(project, "Project name"); err != nil {
+		h.recordMetric("get", "failure")
+		h.respondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -139,6 +184,7 @@ func (h *LockHandlers) HandleGetLock(w http.ResponseWriter, r *http.Request) {
 	lock, err := h.lockManager.GetLock(r.Context(), project)
 	if err != nil {
 		if errors.Is(err, storage.ErrLockNotFound) {
+			h.recordMetric("get", "success")
 			h.respondJSON(w, http.StatusNotFound, model.LockResponse{
 				Status:  "unlocked",
 				Message: "No lock exists for this project",
@@ -147,10 +193,12 @@ func (h *LockHandlers) HandleGetLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		h.logger.Error("Failed to get lock", zap.Error(err))
+		h.recordMetric("get", "failure")
 		h.respondError(w, http.StatusInternalServerError, "Failed to get lock status")
 		return
 	}
 
+	h.recordMetric("get", "success")
 	h.respondLock(w, http.StatusOK, "locked", "Lock exists", lock)
 }
 

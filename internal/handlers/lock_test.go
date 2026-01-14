@@ -182,6 +182,25 @@ func TestHandleLock(t *testing.T) {
 		}
 	})
 
+	t.Run("missing branch", func(t *testing.T) {
+		mock := &mockLockManager{}
+		handlers := NewLockHandlers(mock, testLogger(), testMetrics())
+
+		reqBody := model.LockRequest{
+			Project: "test-project",
+		}
+		body, _ := json.Marshal(reqBody)
+
+		req := httptest.NewRequest(http.MethodPost, "/lock", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		handlers.HandleLock(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("Expected status 400, got %d", rec.Code)
+		}
+	})
+
 	t.Run("storage error", func(t *testing.T) {
 		mock := &mockLockManager{
 			acquireFunc: func(ctx context.Context, project, branch, owner string) (*model.Lock, error) {

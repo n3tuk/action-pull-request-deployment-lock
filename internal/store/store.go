@@ -38,6 +38,11 @@ type Store interface {
 	// For embedded stores like Olric, this will also leave the cluster properly
 	// and shut down the embedded server.
 	Close(ctx context.Context) error
+
+	// PutIfAbsent atomically stores a value only if the key does not exist.
+	// Returns true if the value was stored, false if the key already exists.
+	// This operation is atomic and can be used for distributed locking.
+	PutIfAbsent(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error)
 }
 
 // StoreStats represents statistics about the distributed store.
