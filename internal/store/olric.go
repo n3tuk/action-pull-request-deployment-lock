@@ -323,6 +323,39 @@ func (s *OlricStore) Exists(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
+// PutIfAbsent atomically stores a value only if the key does not exist.
+// Returns true if the value was stored, false if the key already exists.
+// This uses a simple check-and-set with minimal race window.
+func (s *OlricStore) PutIfAbsent(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error) {
+	dmap, err := s.getDMap(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if key exists
+	_, err = dmap.Get(ctx, key)
+	if err == nil {
+		// Key exists, return false
+		return false, nil
+	}
+	if !isKeyNotFoundError(err) {
+		// Actual error occurred
+		return false, fmt.Errorf("failed to check key existence: %w", err)
+	}
+
+	// Key doesn't exist, store it
+	if ttl > 0 {
+		err = dmap.Put(ctx, key, value, olric.EX(ttl))
+	} else {
+		err = dmap.Put(ctx, key, value)
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to put value: %w", err)
+	}
+
+	return true, nil
+}
+
 // Ping verifies connectivity to the store.
 func (s *OlricStore) Ping(ctx context.Context) error {
 	// For embedded Olric, verify health by checking if we can get members

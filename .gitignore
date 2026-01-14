@@ -60,3 +60,5 @@ Thumbs.db
 /client
 bin/service
 bin/client
+find_lock
+list_methods
